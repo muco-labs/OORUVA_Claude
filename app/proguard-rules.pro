@@ -1,0 +1,5 @@
+-keep class com.ooruva.app.** { *; }
+-keep interface com.ooruva.app.** { *; }
+-keepclassmembers class com.ooruva.app.data.models.** { *; }
+-dontwarn com.google.maps.**
+-dontwarn com.google.android.gms.**
