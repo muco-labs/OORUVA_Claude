@@ -1,0 +1,17 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body { @apply bg-ivory text-espresso font-sans antialiased; }
+  h1, h2, h3 { @apply font-display; }
+}
+
+@layer components {
+  .card { @apply bg-white border border-outline rounded-2xl shadow-warm; }
+  .eyebrow { @apply text-[10.5px] font-semibold tracking-[0.16em] uppercase text-gold; }
+  .btn { @apply px-4 py-2 rounded-[10px] text-sm font-medium transition; }
+  .btn-gold { @apply btn bg-gold text-white hover:bg-[#a2762f]; }
+  .btn-ghost { @apply btn border border-outline hover:bg-ivory; }
+  .btn-danger { @apply btn border border-brick text-brick hover:bg-brick hover:text-white; }
+}

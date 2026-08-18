@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">OORUVA</string>
     <string name="app_description">Discover Street Vendors Around You</string>
     <string name="founded_by">Founded by Muco Labs</string>
 </resources>

@@ -1,3 +1,13 @@
+import java.util.Properties
+
+// Keys live in local.properties (git-ignored). Absent keys are not an error:
+// the app falls back to mock data so a fresh clone still builds and runs.
+val localProps = Properties().apply {
+    val f = rootProject.file("local.properties")
+    if (f.exists()) f.inputStream().use { load(it) }
+}
+fun secret(name: String, fallback: String = "") = localProps.getProperty(name) ?: fallback
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.plugin.compose")
@@ -19,6 +29,28 @@ android {
         vectorDrawables {
             useSupportLibrary = true
         }
+
+        buildConfigField("String", "SUPABASE_URL", "\"" + secret("SUPABASE_URL") + "\"")
+        buildConfigField("String", "SUPABASE_ANON_KEY", "\"" + secret("SUPABASE_ANON_KEY") + "\"")
+        manifestPlaceholders["MAPS_API_KEY"] = secret("MAPS_API_KEY")
+    }
+
+    // One codebase, two shipped apps. Separate applicationIds mean a phone can
+    // hold both, and each opens straight into its own dashboard.
+    flavorDimensions += "audience"
+    productFlavors {
+        create("customer") {
+            dimension = "audience"
+            applicationId = "com.ooruva.app.customer"
+            resValue("string", "app_name", "OORUVA")
+            buildConfigField("String", "AUDIENCE", "\"CUSTOMER\"")
+        }
+        create("vendor") {
+            dimension = "audience"
+            applicationId = "com.ooruva.app.vendor"
+            resValue("string", "app_name", "OORUVA Vendor")
+            buildConfigField("String", "AUDIENCE", "\"VENDOR\"")
+        }
     }
 
     buildTypes {
@@ -38,6 +70,9 @@ android {
 
     buildFeatures {
         compose = true
+        buildConfig = true
+        // AGP 9 turns resValue off unless asked; the flavors set app_name with it.
+        resValues = true
     }
 
     packaging {
