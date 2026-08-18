@@ -8,11 +8,13 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import com.ooruva.app.BuildConfig
 import com.ooruva.app.data.models.UserRole
 import com.ooruva.app.data.models.Vendor
 import com.ooruva.app.ui.components.FabNavigationGroup
@@ -66,13 +68,27 @@ sealed class Screen(val route: String) {
 /** Routes that carry the floating navigation. */
 private val customerRoutes = customerDestinations.map { it.route }.toSet()
 
+/**
+ * Each shipped app opens in its own front door. The customer build goes straight
+ * to customer sign-in, the vendor build to vendor sign-in; the role gate is only
+ * for a combined build where the audience is not known at compile time.
+ */
+private fun startForAudience(): String = when (BuildConfig.AUDIENCE) {
+    "CUSTOMER" -> Screen.CustomerAuth.route
+    "VENDOR" -> Screen.VendorAuth.route
+    else -> Screen.RoleSelection.route
+}
+
 @Composable
 fun OoruvaNavGraph(
     navController: NavHostController = rememberNavController(),
-    startDestination: String = Screen.RoleSelection.route
+    startDestination: String = startForAudience()
 ) {
     val allVendors = remember { getMockVendors() }
     var selectedVendor by remember { mutableStateOf<Vendor?>(null) }
+
+    val context = LocalContext.current
+    fun activityFinish() { (context as? android.app.Activity)?.finish() }
 
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backStackEntry?.destination?.route
@@ -87,7 +103,7 @@ fun OoruvaNavGraph(
     }
 
     fun signOut() {
-        navController.navigate(Screen.RoleSelection.route) {
+        navController.navigate(startForAudience()) {
             popUpTo(0) { inclusive = true }
         }
     }
@@ -109,7 +125,7 @@ fun OoruvaNavGraph(
 
             composable(Screen.CustomerAuth.route) {
                 CustomerAuthScreen(
-                    onBack = { navController.popBackStack() },
+                    onBack = { if (!navController.popBackStack()) activityFinish() },
                     onLoginSuccess = {
                         navController.navigate(Screen.CustomerHome.route) {
                             popUpTo(Screen.RoleSelection.route) { inclusive = true }
@@ -120,7 +136,7 @@ fun OoruvaNavGraph(
 
             composable(Screen.VendorAuth.route) {
                 VendorAuthScreen(
-                    onBack = { navController.popBackStack() },
+                    onBack = { if (!navController.popBackStack()) activityFinish() },
                     onLoginSuccess = {
                         navController.navigate(Screen.VendorHome.route) {
                             popUpTo(Screen.RoleSelection.route) { inclusive = true }
