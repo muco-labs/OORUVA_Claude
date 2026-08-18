@@ -69,6 +69,23 @@ dependencies {
 
     // Serialization (data models are @Serializable, ready for a backend)
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.11.0")
+    implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.6.2")
+
+    // Backend — wired but inert until SUPABASE_URL / SUPABASE_ANON_KEY are supplied
+    implementation(platform("io.github.jan-tennert.supabase:bom:3.0.3"))
+    implementation("io.github.jan-tennert.supabase:postgrest-kt")
+    implementation("io.github.jan-tennert.supabase:storage-kt")
+    implementation("io.github.jan-tennert.supabase:auth-kt")
+    implementation("io.ktor:ktor-client-okhttp:3.0.3")
+    implementation("io.ktor:ktor-client-content-negotiation:3.0.3")
+
+    // Maps — placeholder screen swaps to GoogleMap once a key is in the manifest
+    implementation("com.google.android.gms:play-services-maps:19.0.0")
+    implementation("com.google.maps.android:maps-compose:6.4.1")
+
+    // Lifecycle / viewmodel
+    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.11.0")
+    implementation("androidx.lifecycle:lifecycle-runtime-compose:2.11.0")
 
     // Testing
     testImplementation("junit:junit:4.13.2")

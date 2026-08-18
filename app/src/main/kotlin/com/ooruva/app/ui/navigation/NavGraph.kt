@@ -1,120 +1,136 @@
 package com.ooruva.app.ui.navigation
 
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.Chat
-import androidx.compose.material.icons.filled.CardGiftcard
-import androidx.compose.material.icons.filled.Groups
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.Map
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarDefaults
-import androidx.compose.material3.NavigationBarItem
-import androidx.compose.material3.NavigationBarItemDefaults
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import com.ooruva.app.data.models.UserRole
 import com.ooruva.app.data.models.Vendor
+import com.ooruva.app.ui.components.FabNavigationGroup
+import com.ooruva.app.ui.components.customerDestinations
 import com.ooruva.app.ui.screens.AdminDashboardScreen
-import com.ooruva.app.ui.screens.AuthScreen
 import com.ooruva.app.ui.screens.BusinessDetailScreen
 import com.ooruva.app.ui.screens.CommunityScreen
+import com.ooruva.app.ui.screens.CustomerAuthScreen
 import com.ooruva.app.ui.screens.GroupFinderScreen
 import com.ooruva.app.ui.screens.HomeScreen
 import com.ooruva.app.ui.screens.MapScreen
 import com.ooruva.app.ui.screens.ProfileScreen
 import com.ooruva.app.ui.screens.RewardsScreen
-import com.ooruva.app.ui.screens.VendorPortalScreen
+import com.ooruva.app.ui.screens.RoleSelectionScreen
+import com.ooruva.app.ui.screens.VendorAnalyticsScreen
+import com.ooruva.app.ui.screens.VendorAuthScreen
+import com.ooruva.app.ui.screens.VendorBusinessInfoScreen
+import com.ooruva.app.ui.screens.VendorHomeScreen
+import com.ooruva.app.ui.screens.VendorPhotosScreen
+import com.ooruva.app.ui.screens.VendorProfileScreen
 import com.ooruva.app.ui.screens.getMockVendors
 
 sealed class Screen(val route: String) {
-    data object Auth : Screen("auth")
-    data object Home : Screen("home")
+    // Entry
+    data object RoleSelection : Screen("role_selection")
+    data object CustomerAuth : Screen("customer_auth")
+    data object VendorAuth : Screen("vendor_auth")
+
+    // Customer
+    data object CustomerHome : Screen("customer_home")
     data object BusinessDetail : Screen("business_detail/{vendorId}") {
         fun createRoute(vendorId: String) = "business_detail/" + vendorId
     }
-    data object Community : Screen("community")
-    data object Profile : Screen("profile")
     data object GroupFinder : Screen("group_finder")
     data object Map : Screen("map")
+    data object Community : Screen("community")
     data object Rewards : Screen("rewards")
-    data object VendorPortal : Screen("vendor_portal")
+    data object CustomerProfile : Screen("customer_profile")
+
+    // Vendor
+    data object VendorHome : Screen("vendor_home")
+    data object VendorBusinessInfo : Screen("vendor_business_info")
+    data object VendorPhotos : Screen("vendor_photos")
+    data object VendorAnalytics : Screen("vendor_analytics")
+    data object VendorProfile : Screen("vendor_profile")
+
+    // Platform
     data object AdminDashboard : Screen("admin_dashboard")
 }
 
-data class BottomTab(val screen: Screen, val label: String, val icon: ImageVector)
-
-val bottomTabs = listOf(
-    BottomTab(Screen.Home, "Home", Icons.Default.Home),
-    BottomTab(Screen.GroupFinder, "Groups", Icons.Default.Groups),
-    BottomTab(Screen.Map, "Map", Icons.Default.Map),
-    BottomTab(Screen.Community, "Feed", Icons.AutoMirrored.Filled.Chat),
-    BottomTab(Screen.Rewards, "Rewards", Icons.Default.CardGiftcard),
-    BottomTab(Screen.Profile, "You", Icons.Default.Person),
-)
+/** Routes that carry the floating navigation. */
+private val customerRoutes = customerDestinations.map { it.route }.toSet()
 
 @Composable
 fun OoruvaNavGraph(
     navController: NavHostController = rememberNavController(),
-    startDestination: String = Screen.Auth.route
+    startDestination: String = Screen.RoleSelection.route
 ) {
     val allVendors = remember { getMockVendors() }
     var selectedVendor by remember { mutableStateOf<Vendor?>(null) }
 
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backStackEntry?.destination?.route
-    val onTabbedScreen = bottomTabs.any { it.screen.route == currentRoute }
+    val showFab = currentRoute in customerRoutes
 
-    Scaffold(
-        containerColor = MaterialTheme.colorScheme.background,
-        bottomBar = {
-            if (onTabbedScreen) {
-                OoruvaBottomBar(
-                    currentRoute = currentRoute,
-                    onTabSelected = { route ->
-                        navController.navigate(route) {
-                            popUpTo(Screen.Home.route) { saveState = true }
-                            launchSingleTop = true
-                            restoreState = true
-                        }
-                    }
-                )
-            }
+    fun switchTab(route: String) {
+        navController.navigate(route) {
+            popUpTo(Screen.CustomerHome.route) { saveState = true }
+            launchSingleTop = true
+            restoreState = true
         }
-    ) { paddingValues ->
-        // Screens own their headers and draw under the status bar, so only the
-        // bottom inset is consumed here.
-        NavHost(
-            navController = navController,
-            startDestination = startDestination,
-            modifier = Modifier.padding(bottom = paddingValues.calculateBottomPadding())
-        ) {
-            composable(Screen.Auth.route) {
-                AuthScreen(
+    }
+
+    fun signOut() {
+        navController.navigate(Screen.RoleSelection.route) {
+            popUpTo(0) { inclusive = true }
+        }
+    }
+
+    Box(Modifier.fillMaxSize()) {
+        NavHost(navController = navController, startDestination = startDestination) {
+
+            // ── Entry ──────────────────────────────────────────────────────
+            composable(Screen.RoleSelection.route) {
+                RoleSelectionScreen(
+                    onRoleSelected = { role ->
+                        navController.navigate(
+                            if (role == UserRole.CUSTOMER) Screen.CustomerAuth.route
+                            else Screen.VendorAuth.route
+                        )
+                    }
+                )
+            }
+
+            composable(Screen.CustomerAuth.route) {
+                CustomerAuthScreen(
+                    onBack = { navController.popBackStack() },
                     onLoginSuccess = {
-                        navController.navigate(Screen.Home.route) {
-                            popUpTo(Screen.Auth.route) { inclusive = true }
+                        navController.navigate(Screen.CustomerHome.route) {
+                            popUpTo(Screen.RoleSelection.route) { inclusive = true }
                         }
                     }
                 )
             }
 
-            composable(Screen.Home.route) {
+            composable(Screen.VendorAuth.route) {
+                VendorAuthScreen(
+                    onBack = { navController.popBackStack() },
+                    onLoginSuccess = {
+                        navController.navigate(Screen.VendorHome.route) {
+                            popUpTo(Screen.RoleSelection.route) { inclusive = true }
+                        }
+                    }
+                )
+            }
+
+            // ── Customer ───────────────────────────────────────────────────
+            composable(Screen.CustomerHome.route) {
                 HomeScreen(
                     onVendorClick = { vendor ->
                         selectedVendor = vendor
@@ -137,57 +153,55 @@ fun OoruvaNavGraph(
                 }
             }
 
-            composable(Screen.Community.route) { CommunityScreen() }
             composable(Screen.GroupFinder.route) { GroupFinderScreen() }
             composable(Screen.Map.route) { MapScreen() }
+            composable(Screen.Community.route) { CommunityScreen() }
             composable(Screen.Rewards.route) { RewardsScreen() }
 
-            composable(Screen.Profile.route) {
+            composable(Screen.CustomerProfile.route) {
                 ProfileScreen(
-                    onOpenVendorPortal = { navController.navigate(Screen.VendorPortal.route) },
-                    onOpenAdmin = { navController.navigate(Screen.AdminDashboard.route) }
+                    onOpenVendorPortal = { navController.navigate(Screen.VendorHome.route) },
+                    onOpenAdmin = { navController.navigate(Screen.AdminDashboard.route) },
+                    onLogout = { signOut() }
                 )
             }
 
-            composable(Screen.VendorPortal.route) {
-                VendorPortalScreen(onBackClick = { navController.popBackStack() })
+            // ── Vendor ─────────────────────────────────────────────────────
+            composable(Screen.VendorHome.route) {
+                VendorHomeScreen(
+                    onOpenBusinessInfo = { navController.navigate(Screen.VendorBusinessInfo.route) },
+                    onOpenPhotos = { navController.navigate(Screen.VendorPhotos.route) },
+                    onOpenAnalytics = { navController.navigate(Screen.VendorAnalytics.route) },
+                    onOpenProfile = { navController.navigate(Screen.VendorProfile.route) }
+                )
             }
+            composable(Screen.VendorBusinessInfo.route) {
+                VendorBusinessInfoScreen(onBackClick = { navController.popBackStack() })
+            }
+            composable(Screen.VendorPhotos.route) {
+                VendorPhotosScreen(onBackClick = { navController.popBackStack() })
+            }
+            composable(Screen.VendorAnalytics.route) {
+                VendorAnalyticsScreen(onBackClick = { navController.popBackStack() })
+            }
+            composable(Screen.VendorProfile.route) {
+                VendorProfileScreen(
+                    onBackClick = { navController.popBackStack() },
+                    onLogout = { signOut() }
+                )
+            }
+
+            // ── Platform ───────────────────────────────────────────────────
             composable(Screen.AdminDashboard.route) {
                 AdminDashboardScreen(onBackClick = { navController.popBackStack() })
             }
         }
-    }
-}
 
-@Composable
-fun OoruvaBottomBar(
-    currentRoute: String?,
-    onTabSelected: (String) -> Unit,
-) {
-    NavigationBar(
-        containerColor = MaterialTheme.colorScheme.surface,
-        tonalElevation = NavigationBarDefaults.Elevation
-    ) {
-        bottomTabs.forEach { tab ->
-            val selected = currentRoute == tab.screen.route
-            NavigationBarItem(
-                icon = {
-                    Icon(
-                        tab.icon,
-                        contentDescription = tab.label,
-                        modifier = Modifier.padding(top = 2.dp)
-                    )
-                },
-                label = { Text(tab.label, style = MaterialTheme.typography.labelSmall) },
-                selected = selected,
-                onClick = { onTabSelected(tab.screen.route) },
-                colors = NavigationBarItemDefaults.colors(
-                    selectedIconColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                    selectedTextColor = MaterialTheme.colorScheme.primary,
-                    indicatorColor = MaterialTheme.colorScheme.primaryContainer,
-                    unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                    unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+        if (showFab) {
+            FabNavigationGroup(
+                destinations = customerDestinations,
+                currentRoute = currentRoute,
+                onNavigate = { route -> switchTab(route) }
             )
         }
     }

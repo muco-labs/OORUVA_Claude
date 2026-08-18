@@ -4,7 +4,7 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.Box
@@ -22,21 +22,19 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -46,27 +44,73 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.ooruva.app.data.models.UserRole
 import com.ooruva.app.ui.components.GoldUnderline
 import com.ooruva.app.ui.components.MucoLabsCredit
 import com.ooruva.app.ui.components.OoruvaMark
-import com.ooruva.app.ui.components.OoruvaWordmark
+import com.ooruva.app.ui.components.PremiumButton
 import com.ooruva.app.ui.theme.Brand
+import com.ooruva.app.ui.theme.EyebrowStyle
 import com.ooruva.app.ui.theme.Gold
 import com.ooruva.app.ui.theme.GoldBright
-import com.ooruva.app.ui.theme.NightBg
 import com.ooruva.app.ui.theme.NightOnBg
+import com.ooruva.app.ui.theme.Spacing
+import kotlinx.coroutines.delay
+
+/** Customer sign-in. Mock: any ten digits, any six-digit code. */
+@Composable
+fun CustomerAuthScreen(
+    onBack: () -> Unit = {},
+    onLoginSuccess: () -> Unit = {},
+) = PhoneAuthScreen(
+    role = UserRole.CUSTOMER,
+    headline = "Welcome to\nOoruva.",
+    blurb = "The chai stalls, samosa carts and juice corners of your street — kept.",
+    onBack = onBack,
+    onLoginSuccess = onLoginSuccess
+)
+
+/** Vendor sign-in. Same flow, different copy and destination. */
+@Composable
+fun VendorAuthScreen(
+    onBack: () -> Unit = {},
+    onLoginSuccess: () -> Unit = {},
+) = PhoneAuthScreen(
+    role = UserRole.VENDOR,
+    headline = "Mind the\nshop.",
+    blurb = "Sign in with the number your customers already call.",
+    onBack = onBack,
+    onLoginSuccess = onLoginSuccess
+)
+
+/** Kept for older call sites. */
+@Composable
+fun AuthScreen(onLoginSuccess: () -> Unit = {}) =
+    CustomerAuthScreen(onLoginSuccess = onLoginSuccess)
 
 @Composable
-fun AuthScreen(
-    onLoginSuccess: () -> Unit = {}
+private fun PhoneAuthScreen(
+    role: UserRole,
+    headline: String,
+    blurb: String,
+    onBack: () -> Unit,
+    onLoginSuccess: () -> Unit,
 ) {
     var phone by remember { mutableStateOf("") }
     var otp by remember { mutableStateOf("") }
     var isLoading by remember { mutableStateOf(false) }
-    var showOTPField by remember { mutableStateOf(false) }
+    var showOtp by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf("") }
+    var secondsLeft by remember { mutableIntStateOf(0) }
+
+    // 30-second resend countdown, restarted every time a code is "sent".
+    LaunchedEffect(showOtp, secondsLeft) {
+        if (showOtp && secondsLeft > 0) {
+            delay(1000)
+            secondsLeft -= 1
+        }
+    }
 
     Box(
         modifier = Modifier
@@ -80,61 +124,86 @@ fun AuthScreen(
                 .statusBarsPadding()
                 .navigationBarsPadding()
                 .imePadding()
-                .padding(horizontal = 32.dp),
-            horizontalAlignment = Alignment.Start
+                .padding(horizontal = Spacing.xl)
         ) {
-            // Generous top whitespace is the point
-            Spacer(Modifier.height(96.dp))
+            Spacer(Modifier.height(Spacing.md))
 
-            OoruvaMark(size = 76)
+            Box(
+                modifier = Modifier
+                    .size(38.dp)
+                    .clip(CircleShape)
+                    .background(Color.White.copy(alpha = 0.07f))
+                    .clickable {
+                        if (showOtp) {
+                            showOtp = false
+                            otp = ""
+                            errorMessage = ""
+                        } else onBack()
+                    },
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    Icons.AutoMirrored.Filled.ArrowBack,
+                    contentDescription = "Back",
+                    tint = NightOnBg,
+                    modifier = Modifier.size(17.dp)
+                )
+            }
 
-            Spacer(Modifier.height(36.dp))
+            Spacer(Modifier.height(Spacing.xl))
+
+            OoruvaMark(size = 60)
+
+            Spacer(Modifier.height(Spacing.lg))
 
             Text(
-                text = if (showOTPField) "Check your\nmessages." else "Welcome to\nOoruva.",
+                text = if (showOtp) "Check your\nmessages." else headline,
                 style = MaterialTheme.typography.displayLarge,
                 color = NightOnBg
             )
 
-            Spacer(Modifier.height(14.dp))
+            Spacer(Modifier.height(Spacing.md))
 
             Text(
-                text = if (showOTPField) "We sent a six-digit code to +91 " + phone
-                else "The chai stalls, samosa carts and juice corners of your street — kept.",
+                text = if (showOtp) "We sent a six-digit code to +91 " + phone else blurb,
                 style = MaterialTheme.typography.bodyLarge,
                 color = NightOnBg.copy(alpha = 0.55f)
             )
 
-            Spacer(Modifier.height(56.dp))
+            Spacer(Modifier.height(48.dp))
 
-            if (!showOTPField) {
+            if (!showOtp) {
                 UnderlineField(
                     value = phone,
-                    onValueChange = { if (it.length <= 10) phone = it },
+                    onValueChange = { if (it.length <= 10) phone = it.filter { c -> c.isDigit() } },
                     label = "Phone number",
                     placeholder = "98765 43210",
-                    prefix = "+91",
+                    prefix = "+91"
                 )
             } else {
                 UnderlineField(
                     value = otp,
-                    onValueChange = { if (it.length <= 6) otp = it },
+                    onValueChange = { if (it.length <= 6) otp = it.filter { c -> c.isDigit() } },
                     label = "Verification code",
-                    placeholder = "······",
+                    placeholder = "······"
                 )
             }
 
             ErrorLine(errorMessage)
 
-            Spacer(Modifier.height(40.dp))
+            Spacer(Modifier.height(Spacing.xl))
 
-            val enabled = if (showOTPField) otp.isNotEmpty() else phone.isNotEmpty()
-            Button(
+            PremiumButton(
+                label = if (showOtp) "Verify and continue" else "Send OTP",
+                icon = Icons.AutoMirrored.Filled.ArrowForward,
+                loading = isLoading,
+                enabled = if (showOtp) otp.isNotEmpty() else phone.isNotEmpty(),
                 onClick = {
-                    if (!showOTPField) {
+                    if (!showOtp) {
                         if (phone.length == 10) {
                             errorMessage = ""
-                            showOTPField = true
+                            showOtp = true
+                            secondsLeft = 30
                         } else {
                             errorMessage = "That needs to be ten digits"
                         }
@@ -142,83 +211,74 @@ fun AuthScreen(
                         if (otp.length == 6) {
                             errorMessage = ""
                             isLoading = true
-                            android.util.Log.d("OORUVA", "Login successful with phone: " + phone)
+                            android.util.Log.d(
+                                "OORUVA",
+                                "Signed in as " + role.name + " with phone " + phone
+                            )
                             onLoginSuccess()
                         } else {
                             errorMessage = "The code is six digits"
                         }
                     }
-                },
-                enabled = enabled && !isLoading,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(56.dp),
-                shape = RoundedCornerShape(10.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = Gold,
-                    contentColor = NightBg,
-                    disabledContainerColor = Color.White.copy(alpha = 0.07f),
-                    disabledContentColor = NightOnBg.copy(alpha = 0.30f)
-                )
-            ) {
-                if (isLoading) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(20.dp),
-                        strokeWidth = 2.dp,
-                        color = NightBg
-                    )
-                } else {
-                    Text(
-                        text = if (showOTPField) "Verify and continue" else "Continue",
-                        style = MaterialTheme.typography.labelLarge
-                    )
-                    Spacer(Modifier.width(10.dp))
-                    Icon(
-                        Icons.AutoMirrored.Filled.ArrowForward,
-                        contentDescription = null,
-                        modifier = Modifier.size(17.dp)
-                    )
                 }
-            }
+            )
 
-            if (showOTPField) {
-                Spacer(Modifier.height(8.dp))
-                TextButton(
-                    onClick = {
-                        showOTPField = false
-                        phone = ""
-                        otp = ""
-                        errorMessage = ""
+            if (showOtp) {
+                Spacer(Modifier.height(Spacing.md))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (secondsLeft > 0) {
+                        Text(
+                            text = "Resend in " + secondsLeft + "s",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = NightOnBg.copy(alpha = 0.4f)
+                        )
+                    } else {
+                        Text(
+                            text = "Resend code",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = GoldBright,
+                            modifier = Modifier.clickable {
+                                secondsLeft = 30
+                                otp = ""
+                            }
+                        )
                     }
-                ) {
+                    Spacer(Modifier.width(Spacing.md))
                     Text(
-                        "Use a different number",
+                        text = "·",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = NightOnBg.copy(alpha = 0.3f)
+                    )
+                    Spacer(Modifier.width(Spacing.md))
+                    Text(
+                        text = "Change number",
                         style = MaterialTheme.typography.labelMedium,
-                        color = GoldBright.copy(alpha = 0.85f)
+                        color = NightOnBg.copy(alpha = 0.55f),
+                        modifier = Modifier.clickable {
+                            showOtp = false
+                            phone = ""
+                            otp = ""
+                            errorMessage = ""
+                        }
                     )
                 }
             }
 
-            Spacer(Modifier.height(72.dp))
+            Spacer(Modifier.height(64.dp))
 
             Text(
                 text = "By continuing you agree to our Terms of Service and Privacy Policy.",
                 style = MaterialTheme.typography.bodySmall,
-                color = NightOnBg.copy(alpha = 0.32f),
-                textAlign = TextAlign.Start
+                color = NightOnBg.copy(alpha = 0.32f)
             )
 
-            Spacer(Modifier.height(26.dp))
+            Spacer(Modifier.height(Spacing.lg))
             MucoLabsCredit(onDark = true)
-            Spacer(Modifier.height(28.dp))
+            Spacer(Modifier.height(Spacing.lg))
         }
     }
 }
 
-/**
- * Gold underline rather than a boxed outline — the field recedes and the
- * typography leads.
- */
 @Composable
 private fun UnderlineField(
     value: String,
@@ -233,7 +293,7 @@ private fun UnderlineField(
     Column(Modifier.fillMaxWidth()) {
         Text(
             text = label.uppercase(),
-            style = com.ooruva.app.ui.theme.EyebrowStyle,
+            style = EyebrowStyle,
             color = if (focused) Gold else NightOnBg.copy(alpha = 0.45f)
         )
         Spacer(Modifier.height(14.dp))

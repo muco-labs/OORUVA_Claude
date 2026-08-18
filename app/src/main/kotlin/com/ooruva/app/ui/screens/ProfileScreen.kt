@@ -45,12 +45,13 @@ import com.ooruva.app.ui.theme.Gold
 fun ProfileScreen(
     onOpenVendorPortal: () -> Unit = {},
     onOpenAdmin: () -> Unit = {},
+    onLogout: () -> Unit = {},
 ) {
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background),
-        contentPadding = PaddingValues(bottom = 40.dp)
+        contentPadding = PaddingValues(bottom = 108.dp)
     ) {
         item {
             // Editorial: large serif name, no boxed avatar card
@@ -146,7 +147,7 @@ fun ProfileScreen(
                 "System overview",
                 onOpenAdmin
             )
-            SettingRow(Icons.AutoMirrored.Filled.ExitToApp, "Log out", null) {}
+            SettingRow(Icons.AutoMirrored.Filled.ExitToApp, "Log out", null, onLogout)
         }
 
         item {

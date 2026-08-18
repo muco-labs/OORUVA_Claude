@@ -67,7 +67,7 @@ fun CommunityScreen() {
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background),
-        contentPadding = PaddingValues(bottom = 40.dp)
+        contentPadding = PaddingValues(bottom = 108.dp)
     ) {
         item {
             EditorialHeader(
