@@ -1,19 +1,62 @@
-// AuthScreen.kt - phone + OTP login (mock: any 10-digit phone, any 6-digit OTP)
 package com.ooruva.app.ui.screens
 
-import androidx.compose.foundation.layout.*
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsFocusedAsState
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Phone
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
+import com.ooruva.app.ui.components.GoldUnderline
+import com.ooruva.app.ui.components.MucoLabsCredit
+import com.ooruva.app.ui.components.OoruvaMark
+import com.ooruva.app.ui.components.OoruvaWordmark
+import com.ooruva.app.ui.theme.Brand
+import com.ooruva.app.ui.theme.Gold
+import com.ooruva.app.ui.theme.GoldBright
+import com.ooruva.app.ui.theme.NightBg
+import com.ooruva.app.ui.theme.NightOnBg
 
 @Composable
 fun AuthScreen(
@@ -25,166 +68,228 @@ fun AuthScreen(
     var showOTPField by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf("") }
 
-    Column(
+    Box(
         modifier = Modifier
             .fillMaxSize()
-            .padding(24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
+            .background(Brand.EspressoWash)
     ) {
-        // Header
-        Text(
-            text = "OORUVA",
-            fontSize = 32.sp,
-            fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
-            color = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.padding(bottom = 8.dp)
-        )
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .statusBarsPadding()
+                .navigationBarsPadding()
+                .imePadding()
+                .padding(horizontal = 32.dp),
+            horizontalAlignment = Alignment.Start
+        ) {
+            // Generous top whitespace is the point
+            Spacer(Modifier.height(96.dp))
 
-        Text(
-            text = "Discover Local Vendors",
-            fontSize = 16.sp,
-            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
-            modifier = Modifier.padding(bottom = 48.dp)
-        )
+            OoruvaMark(size = 76)
 
-        // Phone Input Section
-        if (!showOTPField) {
-            OutlinedTextField(
-                value = phone,
-                onValueChange = {
-                    if (it.length <= 10) phone = it
-                },
-                label = { Text("Phone Number") },
-                placeholder = { Text("9876543210") },
-                leadingIcon = {
-                    Icon(Icons.Default.Phone, contentDescription = null)
-                },
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 16.dp),
-                singleLine = true,
-                isError = errorMessage.isNotEmpty()
-            )
+            Spacer(Modifier.height(36.dp))
 
-            if (errorMessage.isNotEmpty()) {
-                Text(
-                    text = errorMessage,
-                    color = MaterialTheme.colorScheme.error,
-                    fontSize = 12.sp,
-                    modifier = Modifier.padding(bottom = 16.dp)
-                )
-            }
-
-            Button(
-                onClick = {
-                    if (phone.length == 10) {
-                        errorMessage = ""
-                        isLoading = true
-                        // Simulate API call
-                        showOTPField = true
-                        isLoading = false
-                    } else {
-                        errorMessage = "Enter valid 10-digit phone number"
-                    }
-                },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(48.dp),
-                enabled = !isLoading && phone.isNotEmpty()
-            ) {
-                if (isLoading) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(20.dp),
-                        strokeWidth = 2.dp,
-                        color = Color.White
-                    )
-                } else {
-                    Text("Send OTP", fontSize = 16.sp)
-                }
-            }
-        } else {
-            // OTP Verification Section
             Text(
-                text = "Verify OTP sent to\n+91 $phone",
-                textAlign = TextAlign.Center,
-                modifier = Modifier.padding(bottom = 24.dp),
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                text = if (showOTPField) "Check your\nmessages." else "Welcome to\nOoruva.",
+                style = MaterialTheme.typography.displayLarge,
+                color = NightOnBg
             )
 
-            OutlinedTextField(
-                value = otp,
-                onValueChange = {
-                    if (it.length <= 6) otp = it
-                },
-                label = { Text("Enter OTP") },
-                placeholder = { Text("000000") },
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 24.dp),
-                singleLine = true,
-                isError = errorMessage.isNotEmpty()
+            Spacer(Modifier.height(14.dp))
+
+            Text(
+                text = if (showOTPField) "We sent a six-digit code to +91 " + phone
+                else "The chai stalls, samosa carts and juice corners of your street — kept.",
+                style = MaterialTheme.typography.bodyLarge,
+                color = NightOnBg.copy(alpha = 0.55f)
             )
 
-            if (errorMessage.isNotEmpty()) {
-                Text(
-                    text = errorMessage,
-                    color = MaterialTheme.colorScheme.error,
-                    fontSize = 12.sp,
-                    modifier = Modifier.padding(bottom = 16.dp)
+            Spacer(Modifier.height(56.dp))
+
+            if (!showOTPField) {
+                UnderlineField(
+                    value = phone,
+                    onValueChange = { if (it.length <= 10) phone = it },
+                    label = "Phone number",
+                    placeholder = "98765 43210",
+                    prefix = "+91",
+                )
+            } else {
+                UnderlineField(
+                    value = otp,
+                    onValueChange = { if (it.length <= 6) otp = it },
+                    label = "Verification code",
+                    placeholder = "······",
                 )
             }
 
+            ErrorLine(errorMessage)
+
+            Spacer(Modifier.height(40.dp))
+
+            val enabled = if (showOTPField) otp.isNotEmpty() else phone.isNotEmpty()
             Button(
                 onClick = {
-                    if (otp.length == 6) {
-                        errorMessage = ""
-                        isLoading = true
-                        // Simulate OTP verification
-                        android.util.Log.d("OORUVA", "Login successful with phone: $phone")
-                        onLoginSuccess()
+                    if (!showOTPField) {
+                        if (phone.length == 10) {
+                            errorMessage = ""
+                            showOTPField = true
+                        } else {
+                            errorMessage = "That needs to be ten digits"
+                        }
                     } else {
-                        errorMessage = "Enter valid 6-digit OTP"
+                        if (otp.length == 6) {
+                            errorMessage = ""
+                            isLoading = true
+                            android.util.Log.d("OORUVA", "Login successful with phone: " + phone)
+                            onLoginSuccess()
+                        } else {
+                            errorMessage = "The code is six digits"
+                        }
                     }
                 },
+                enabled = enabled && !isLoading,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(48.dp),
-                enabled = !isLoading && otp.isNotEmpty()
+                    .height(56.dp),
+                shape = RoundedCornerShape(10.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Gold,
+                    contentColor = NightBg,
+                    disabledContainerColor = Color.White.copy(alpha = 0.07f),
+                    disabledContentColor = NightOnBg.copy(alpha = 0.30f)
+                )
             ) {
                 if (isLoading) {
                     CircularProgressIndicator(
                         modifier = Modifier.size(20.dp),
                         strokeWidth = 2.dp,
-                        color = Color.White
+                        color = NightBg
                     )
                 } else {
-                    Text("Verify OTP", fontSize = 16.sp)
+                    Text(
+                        text = if (showOTPField) "Verify and continue" else "Continue",
+                        style = MaterialTheme.typography.labelLarge
+                    )
+                    Spacer(Modifier.width(10.dp))
+                    Icon(
+                        Icons.AutoMirrored.Filled.ArrowForward,
+                        contentDescription = null,
+                        modifier = Modifier.size(17.dp)
+                    )
                 }
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            if (showOTPField) {
+                Spacer(Modifier.height(8.dp))
+                TextButton(
+                    onClick = {
+                        showOTPField = false
+                        phone = ""
+                        otp = ""
+                        errorMessage = ""
+                    }
+                ) {
+                    Text(
+                        "Use a different number",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = GoldBright.copy(alpha = 0.85f)
+                    )
+                }
+            }
 
-            TextButton(onClick = {
-                showOTPField = false
-                phone = ""
-                otp = ""
-                errorMessage = ""
-            }) {
-                Text("Change Phone Number")
+            Spacer(Modifier.height(72.dp))
+
+            Text(
+                text = "By continuing you agree to our Terms of Service and Privacy Policy.",
+                style = MaterialTheme.typography.bodySmall,
+                color = NightOnBg.copy(alpha = 0.32f),
+                textAlign = TextAlign.Start
+            )
+
+            Spacer(Modifier.height(26.dp))
+            MucoLabsCredit(onDark = true)
+            Spacer(Modifier.height(28.dp))
+        }
+    }
+}
+
+/**
+ * Gold underline rather than a boxed outline — the field recedes and the
+ * typography leads.
+ */
+@Composable
+private fun UnderlineField(
+    value: String,
+    onValueChange: (String) -> Unit,
+    label: String,
+    placeholder: String,
+    prefix: String? = null,
+) {
+    val interaction = remember { MutableInteractionSource() }
+    val focused by interaction.collectIsFocusedAsState()
+
+    Column(Modifier.fillMaxWidth()) {
+        Text(
+            text = label.uppercase(),
+            style = com.ooruva.app.ui.theme.EyebrowStyle,
+            color = if (focused) Gold else NightOnBg.copy(alpha = 0.45f)
+        )
+        Spacer(Modifier.height(14.dp))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            if (prefix != null) {
+                Text(
+                    text = prefix,
+                    style = MaterialTheme.typography.headlineMedium,
+                    color = NightOnBg.copy(alpha = 0.5f)
+                )
+                Spacer(Modifier.width(14.dp))
+            }
+            Box(Modifier.weight(1f)) {
+                if (value.isEmpty()) {
+                    Text(
+                        text = placeholder,
+                        style = MaterialTheme.typography.headlineMedium,
+                        color = NightOnBg.copy(alpha = 0.22f)
+                    )
+                }
+                BasicTextField(
+                    value = value,
+                    onValueChange = onValueChange,
+                    singleLine = true,
+                    interactionSource = interaction,
+                    cursorBrush = SolidColor(Gold),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    textStyle = MaterialTheme.typography.headlineMedium.copy(color = NightOnBg),
+                    modifier = Modifier.fillMaxWidth()
+                )
             }
         }
+        Spacer(Modifier.height(12.dp))
+        GoldUnderline(active = focused)
+    }
+}
 
-        Spacer(modifier = Modifier.height(32.dp))
-
-        // Footer
-        Text(
-            text = "By continuing, you agree to our\nTerms of Service & Privacy Policy",
-            textAlign = TextAlign.Center,
-            fontSize = 12.sp,
-            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
-        )
+@Composable
+private fun ErrorLine(message: String) {
+    AnimatedVisibility(visible = message.isNotEmpty(), enter = fadeIn(), exit = fadeOut()) {
+        Row(
+            modifier = Modifier.padding(top = 14.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                Modifier
+                    .size(4.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.error)
+            )
+            Spacer(Modifier.width(9.dp))
+            Text(
+                text = message,
+                style = MaterialTheme.typography.bodySmall,
+                color = Color(0xFFD9897C)
+            )
+        }
     }
 }

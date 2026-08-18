@@ -1,173 +1,195 @@
 package com.ooruva.app.ui.screens
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.ExitToApp
-import androidx.compose.material.icons.filled.*
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material.icons.automirrored.filled.NavigateNext
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import com.ooruva.app.data.models.Vendor
+import com.ooruva.app.ui.components.CountUpNumber
+import com.ooruva.app.ui.components.SectionHeader
+import com.ooruva.app.ui.theme.EyebrowStyle
+import com.ooruva.app.ui.theme.Forest
+import com.ooruva.app.ui.theme.ForestLight
+import com.ooruva.app.ui.theme.GoldBright
+import com.ooruva.app.ui.theme.OoruvaToolTheme
 
 @Composable
-fun AdminDashboardScreen() {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
-    ) {
-        // Header
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(Color(0xFFD32F2F))
-                .padding(16.dp)
-        ) {
-            Text(
-                text = "Admin Dashboard",
-                fontSize = 24.sp,
-                fontWeight = FontWeight.Bold,
-                color = Color.White
-            )
-            Text(
-                text = "System Overview",
-                fontSize = 12.sp,
-                color = Color.White.copy(alpha = 0.8f)
-            )
-        }
-
+fun AdminDashboardScreen(onBackClick: () -> Unit = {}) {
+    OoruvaToolTheme {
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+                .background(MaterialTheme.colorScheme.background),
+            contentPadding = PaddingValues(bottom = 40.dp)
         ) {
             item {
-                Text("Key Metrics", fontSize = 14.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(bottom = 8.dp))
-            }
-
-            item {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    AdminStatCard("2.5K", "Users", "👥")
-                    AdminStatCard("450", "Vendors", "🏪")
-                    AdminStatCard("12.5K", "Check-ins", "✓")
-                }
-            }
-
-            item {
-                HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
-            }
-
-            item {
-                Text("Pending Actions", fontSize = 14.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(bottom = 8.dp))
-            }
-
-            item {
-                AdminActionCard("Vendor Verification", "23 pending", Icons.Default.VerifiedUser, Color(0xFFFFC107))
-            }
-
-            item {
-                AdminActionCard("Review Moderation", "8 flagged", Icons.Default.Flag, Color(0xFFE91E63))
-            }
-
-            item {
-                AdminActionCard("Fraud Detection", "2 suspicious", Icons.Default.Security, Color(0xFFD32F2F))
-            }
-
-            item {
-                HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
-            }
-
-            item {
-                Text("Recent Activity", fontSize = 14.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(bottom = 8.dp))
-            }
-
-            item {
-                AdminActivityLog("New vendor signup", "5 min ago")
-                AdminActivityLog("Review reported", "12 min ago")
-                AdminActivityLog("User check-in", "23 min ago")
-            }
-        }
-    }
-}
-
-@Composable
-fun RowScope.AdminStatCard(value: String, label: String, emoji: String) {
-    Card(
-        modifier = Modifier
-            .weight(1f)
-            .height(100.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(12.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
-        ) {
-            Text(text = emoji, fontSize = 24.sp, modifier = Modifier.padding(bottom = 4.dp))
-            Text(text = value, fontSize = 18.sp, fontWeight = FontWeight.Bold)
-            Text(text = label, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        }
-    }
-}
-
-@Composable
-fun AdminActionCard(title: String, count: String, icon: ImageVector, color: Color) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(
-                    imageVector = icon,
-                    contentDescription = title,
-                    modifier = Modifier.size(32.dp),
-                    tint = color
+                ToolHeader(
+                    eyebrow = "Admin",
+                    title = "System",
+                    status = "ALL HEALTHY",
+                    onBackClick = onBackClick
                 )
-                Column(modifier = Modifier.padding(start = 12.dp)) {
-                    Text(text = title, fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                    Text(text = count, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+
+            item {
+                Column(Modifier.padding(horizontal = 24.dp)) {
+                    SectionHeader(eyebrow = "Key metrics", title = "Platform")
+                    Spacer(Modifier.height(24.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(28.dp)
+                    ) {
+                        MetricColumn(2500, "Users", "+12% wk")
+                        MetricColumn(450, "Vendors", "+4% wk")
+                        MetricColumn(12500, "Check-ins", "+22% wk")
+                    }
+
+                    Spacer(Modifier.height(34.dp))
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                    Spacer(Modifier.height(28.dp))
+
+                    SectionHeader(eyebrow = "Seven days", title = "Check-in volume")
+                    Spacer(Modifier.height(20.dp))
+                    WeekBars(listOf(0.42f, 0.55f, 0.48f, 0.7f, 0.88f, 1f, 0.8f))
+
+                    Spacer(Modifier.height(34.dp))
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                    Spacer(Modifier.height(28.dp))
+
+                    SectionHeader(eyebrow = "Needs a human", title = "Pending actions")
+                    Spacer(Modifier.height(10.dp))
                 }
             }
-            Icon(Icons.Default.ChevronRight, contentDescription = "Navigate")
+
+            item {
+                QueueRow("Vendor verification", 23, GoldBright)
+                QueueRow("Review moderation", 8, ForestLight)
+                QueueRow("Fraud signals", 2, MaterialTheme.colorScheme.error)
+            }
+
+            item {
+                Column(Modifier.padding(horizontal = 24.dp)) {
+                    Spacer(Modifier.height(28.dp))
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                    Spacer(Modifier.height(28.dp))
+                    SectionHeader(eyebrow = "Live", title = "Recent activity")
+                    Spacer(Modifier.height(18.dp))
+
+                    LogRow("New vendor signup", "Juice Corner, Anna Nagar", "5 min ago")
+                    LogRow("Review reported", "Beauty Studio", "12 min ago")
+                    LogRow("User check-in", "Chai Wali", "23 min ago")
+                    LogRow("Payout processed", "₹4,200 to 14 vendors", "1 hr ago")
+                }
+            }
         }
     }
 }
 
 @Composable
-fun AdminActivityLog(action: String, time: String) {
+private fun MetricColumn(value: Int, label: String, delta: String) {
+    Column {
+        CountUpNumber(
+            target = value,
+            style = MaterialTheme.typography.displaySmall,
+            color = MaterialTheme.colorScheme.onBackground
+        )
+        Spacer(Modifier.height(3.dp))
+        Text(
+            text = label.uppercase(),
+            style = EyebrowStyle,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Spacer(Modifier.height(5.dp))
+        Text(
+            text = delta,
+            style = MaterialTheme.typography.labelSmall,
+            color = Forest.copy(alpha = 0.9f).let { ForestLight }
+        )
+    }
+}
+
+@Composable
+private fun QueueRow(title: String, count: Int, accent: Color) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 8.dp),
-        horizontalArrangement = Arrangement.SpaceBetween
+            .clickable {}
+            .padding(horizontal = 24.dp, vertical = 16.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Text(text = action, fontSize = 13.sp)
-        Text(text = time, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Box(Modifier.size(6.dp).clip(CircleShape).background(accent))
+        Spacer(Modifier.width(16.dp))
+        Text(
+            text = title,
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onBackground,
+            modifier = Modifier.weight(1f)
+        )
+        Text(
+            text = count.toString(),
+            style = MaterialTheme.typography.titleLarge,
+            color = accent
+        )
+        Spacer(Modifier.width(12.dp))
+        Icon(
+            Icons.AutoMirrored.Filled.NavigateNext,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.outline,
+            modifier = Modifier.size(18.dp)
+        )
+    }
+}
+
+@Composable
+private fun LogRow(action: String, detail: String, ago: String) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 12.dp),
+        verticalAlignment = Alignment.Top
+    ) {
+        Column(Modifier.weight(1f)) {
+            Text(
+                text = action,
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onBackground
+            )
+            Spacer(Modifier.height(2.dp))
+            Text(
+                text = detail,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+        Spacer(Modifier.width(16.dp))
+        Text(
+            text = ago.uppercase(),
+            style = EyebrowStyle,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
     }
 }

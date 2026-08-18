@@ -1,167 +1,183 @@
 package com.ooruva.app.ui.screens
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.ExitToApp
-import androidx.compose.material.icons.filled.*
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material.icons.automirrored.filled.Chat
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.FavoriteBorder
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.mutableStateMapOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
+import com.ooruva.app.ui.components.EditorialHeader
+import com.ooruva.app.ui.components.HeroTile
+import com.ooruva.app.ui.theme.EyebrowStyle
+import com.ooruva.app.ui.theme.Gold
+
+private data class Post(
+    val id: String,
+    val author: String,
+    val vendor: String,
+    val category: String,
+    val caption: String,
+    val likes: Int,
+    val comments: Int,
+    val ago: String,
+)
+
+private val posts = listOf(
+    Post("p1", "Priya", "Street Samosa", "FOOD",
+        "Found this hidden gem behind the flower market. Best samosas in the neighbourhood, and the queue moves fast.",
+        45, 12, "2 days ago"),
+    Post("p2", "Arjun", "Chai Wali", "CHAI",
+        "Chai tastes like my grandmother made it. Worth the wait, worth the walk.",
+        32, 8, "3 days ago"),
+    Post("p3", "Sneha", "Fresh Juice Corner", "JUICE",
+        "Perfect spot for a weekend breakfast. They press the sugarcane in front of you.",
+        68, 21, "5 days ago"),
+)
 
 @Composable
 fun CommunityScreen() {
-    Column(
+    val liked = remember { mutableStateMapOf<String, Boolean>() }
+
+    LazyColumn(
         modifier = Modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
+            .background(MaterialTheme.colorScheme.background),
+        contentPadding = PaddingValues(bottom = 40.dp)
     ) {
-        // Header
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(MaterialTheme.colorScheme.primary)
-                .padding(16.dp)
-        ) {
-            Text(
-                text = "Community",
-                fontSize = 24.sp,
-                fontWeight = FontWeight.Bold,
-                color = Color.White
-            )
-            Text(
-                text = "Discover what others found",
-                fontSize = 12.sp,
-                color = Color.White.copy(alpha = 0.8f)
+        item {
+            EditorialHeader(
+                eyebrow = "The feed",
+                title = "What the\nstreet found."
             )
         }
 
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            items(3) { index ->
-                CommunityPostItem(index)
+        items(posts.size) { index ->
+            val post = posts[index]
+            PostItem(
+                post = post,
+                liked = liked[post.id] == true,
+                onLike = { liked[post.id] = liked[post.id] != true }
+            )
+            if (index != posts.lastIndex) {
+                HorizontalDivider(
+                    color = MaterialTheme.colorScheme.outlineVariant,
+                    modifier = Modifier.padding(horizontal = 24.dp, vertical = 28.dp)
+                )
             }
         }
     }
 }
 
 @Composable
-fun CommunityPostItem(index: Int) {
-    val posts = listOf(
-        Triple("Priya", "Found this hidden gem! Best samosas in the neighborhood 🥟", 45),
-        Triple("Arjun", "Chai tastes amazing here. Worth the wait!", 32),
-        Triple("Sneha", "Perfect spot for weekend breakfast. Highly recommend! 😍", 68)
-    )
-
-    val (name, caption, likes) = posts[index % posts.size]
-
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-    ) {
-        Column(modifier = Modifier.padding(12.dp)) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 8.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size(40.dp)
-                        .clip(RoundedCornerShape(20.dp))
-                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = name.take(1),
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-                Column(modifier = Modifier.padding(start = 8.dp)) {
-                    Text(
-                        text = name,
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Text(
-                        text = "2 days ago",
-                        fontSize = 11.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
-
-            // Photo placeholder
+private fun PostItem(post: Post, liked: Boolean, onLike: () -> Unit) {
+    Column(Modifier.padding(horizontal = 24.dp)) {
+        // Avatar-led header
+        Row(verticalAlignment = Alignment.CenterVertically) {
             Box(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .height(160.dp)
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(MaterialTheme.colorScheme.surfaceVariant)
-            )
-
-            Text(
-                text = caption,
-                fontSize = 14.sp,
-                modifier = Modifier.padding(vertical = 8.dp)
-            )
-
-            // Actions
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 8.dp),
-                horizontalArrangement = Arrangement.spacedBy(24.dp)
+                    .size(42.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.primaryContainer),
+                contentAlignment = Alignment.Center
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        imageVector = Icons.Default.FavoriteBorder,
-                        contentDescription = "Like",
-                        modifier = Modifier.size(20.dp),
-                        tint = Color.Red
-                    )
-                    Text(
-                        text = "$likes",
-                        fontSize = 12.sp,
-                        modifier = Modifier.padding(start = 4.dp)
-                    )
-                }
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        imageVector = Icons.Default.ChatBubbleOutline,
-                        contentDescription = "Comment",
-                        modifier = Modifier.size(20.dp)
-                    )
-                    Text("12", fontSize = 12.sp, modifier = Modifier.padding(start = 4.dp))
-                }
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        imageVector = Icons.Default.Share,
-                        contentDescription = "Share",
-                        modifier = Modifier.size(20.dp)
-                    )
-                    Text("5", fontSize = 12.sp, modifier = Modifier.padding(start = 4.dp))
-                }
+                Text(
+                    text = post.author.take(1),
+                    style = MaterialTheme.typography.titleLarge,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                )
+            }
+            Spacer(Modifier.width(14.dp))
+            Column(Modifier.weight(1f)) {
+                Text(
+                    text = post.author,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onBackground
+                )
+                Spacer(Modifier.height(2.dp))
+                Text(
+                    text = "AT " + post.vendor.uppercase(),
+                    style = EyebrowStyle,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
+            Text(
+                text = post.ago.uppercase(),
+                style = EyebrowStyle,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+
+        Spacer(Modifier.height(18.dp))
+
+        HeroTile(name = post.vendor, category = post.category, height = 220, corner = 24)
+
+        Spacer(Modifier.height(18.dp))
+
+        Text(
+            text = post.caption,
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onBackground
+        )
+
+        Spacer(Modifier.height(18.dp))
+
+        Row(horizontalArrangement = Arrangement.spacedBy(24.dp)) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.clickable(onClick = onLike)
+            ) {
+                Icon(
+                    imageVector = if (liked) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                    contentDescription = "Like",
+                    tint = if (liked) Gold else MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(17.dp)
+                )
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    text = "" + (post.likes + if (liked) 1 else 0),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    Icons.AutoMirrored.Filled.Chat,
+                    contentDescription = "Comments",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(17.dp)
+                )
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    text = "" + post.comments,
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
         }
     }
 }
-

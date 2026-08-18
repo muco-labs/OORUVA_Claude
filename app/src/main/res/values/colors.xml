@@ -1,7 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="primary">#6200EE</color>
-    <color name="primary_dark">#3700B3</color>
-    <color name="secondary">#03DAC6</color>
-    <color name="ic_launcher_background">#6200EE</color>
+    <!-- Quiet Luxury tokens (mirror of ui/theme/Color.kt) -->
+    <color name="espresso">#1C1917</color>
+    <color name="espresso_night">#161311</color>
+    <color name="gold">#B8863B</color>
+    <color name="forest">#2F4A3C</color>
+    <color name="ivory">#FAF7F1</color>
+    <color name="ic_launcher_background">#FAF7F1</color>
 </resources>

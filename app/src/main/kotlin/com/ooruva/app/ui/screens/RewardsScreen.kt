@@ -1,119 +1,192 @@
 package com.ooruva.app.ui.screens
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.ExitToApp
-import androidx.compose.material.icons.filled.*
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
+import com.ooruva.app.ui.components.CountUpNumber
+import com.ooruva.app.ui.components.EditorialHeader
+import com.ooruva.app.ui.components.GoldRing
+import com.ooruva.app.ui.components.SectionHeader
+import com.ooruva.app.ui.theme.EyebrowStyle
+import com.ooruva.app.ui.theme.Forest
+import com.ooruva.app.ui.theme.Gold
+
+private const val POINTS = 2450
+private const val NEXT_TIER = 3000
 
 @Composable
 fun RewardsScreen() {
-    Column(
+    LazyColumn(
         modifier = Modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
+            .background(MaterialTheme.colorScheme.background),
+        contentPadding = PaddingValues(bottom = 40.dp)
     ) {
-        // Points Card
-        Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.primary
+        item {
+            EditorialHeader(
+                eyebrow = "Rewards",
+                title = "Your\nstanding."
             )
-        ) {
+        }
+
+        item {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(24.dp),
+                    .padding(vertical = 12.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
+                GoldRing(progress = POINTS / NEXT_TIER.toFloat(), size = 230) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        CountUpNumber(
+                            target = POINTS,
+                            style = MaterialTheme.typography.displayLarge,
+                            color = MaterialTheme.colorScheme.onBackground
+                        )
+                        Spacer(Modifier.height(4.dp))
+                        Text(
+                            text = "POINTS",
+                            style = EyebrowStyle,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                }
+
+                Spacer(Modifier.height(24.dp))
+
                 Text(
-                    text = "Your OORUVA Points",
-                    fontSize = 14.sp,
-                    color = Color.White,
+                    text = "₹245 in vouchers available",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(Modifier.height(6.dp))
+                Text(
+                    text = "" + (NEXT_TIER - POINTS) + " points to Gold tier",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.primary,
                     textAlign = TextAlign.Center
                 )
-                Text(
-                    text = "2,450",
-                    fontSize = 48.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.White,
-                    modifier = Modifier.padding(vertical = 8.dp)
-                )
-                Text(
-                    text = "₹245 in vouchers",
-                    fontSize = 12.sp,
-                    color = Color.White.copy(alpha = 0.8f)
-                )
+
+                Spacer(Modifier.height(28.dp))
+
+                OutlinedButton(
+                    onClick = {},
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 24.dp)
+                        .height(52.dp),
+                    shape = RoundedCornerShape(10.dp),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, Gold),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = Gold)
+                ) {
+                    Text("Redeem points", style = MaterialTheme.typography.labelLarge)
+                }
             }
         }
 
-        // Recent Activity
-        Column(modifier = Modifier.padding(16.dp)) {
-            Text(
-                text = "Recent Activity",
-                fontSize = 16.sp,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(bottom = 12.dp)
-            )
-
-            RewardActivityItem("Check-in at Chai Wali", "+50 points", "2 hours ago")
-            RewardActivityItem("Review posted", "+25 points", "1 day ago")
-            RewardActivityItem("Referred a friend", "+100 points", "3 days ago")
+        item {
+            Column(Modifier.padding(horizontal = 24.dp)) {
+                Spacer(Modifier.height(36.dp))
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                Spacer(Modifier.height(28.dp))
+                SectionHeader(eyebrow = "Ledger", title = "Recent activity")
+                Spacer(Modifier.height(20.dp))
+            }
         }
 
-        Spacer(modifier = Modifier.weight(1f))
+        val activity = listOf(
+            Triple("Check-in at Chai Wali", "2 hours ago", 50),
+            Triple("Review posted", "1 day ago", 25),
+            Triple("Referred a friend", "3 days ago", 100),
+            Triple("Check-in at Street Samosa", "6 days ago", 50),
+        )
 
-        // Redeem Button
-        Button(
-            onClick = {},
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp)
-                .height(48.dp)
-        ) {
-            Icon(Icons.Default.CardGiftcard, contentDescription = "Redeem", modifier = Modifier.size(20.dp))
-            Spacer(modifier = Modifier.width(8.dp))
-            Text("Redeem Points", fontSize = 16.sp)
+        items(activity.size) { index ->
+            val (action, time, points) = activity[index]
+            ActivityRow(action, time, points)
+        }
+
+        item {
+            Spacer(Modifier.height(28.dp))
+            Box(
+                modifier = Modifier
+                    .padding(horizontal = 24.dp)
+                    .fillMaxWidth()
+                    .border(
+                        1.dp,
+                        MaterialTheme.colorScheme.outlineVariant,
+                        RoundedCornerShape(16.dp)
+                    )
+                    .padding(20.dp)
+            ) {
+                Column {
+                    Text(
+                        text = "HOW POINTS WORK",
+                        style = EyebrowStyle,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    Spacer(Modifier.height(10.dp))
+                    Text(
+                        text = "Fifty for a check-in, twenty-five for a review, a hundred when a " +
+                            "friend joins. Points become vouchers at the stalls you already visit.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
         }
     }
 }
 
 @Composable
-fun RewardActivityItem(action: String, points: String, time: String) {
+private fun ActivityRow(action: String, time: String, points: Int) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 8.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
+            .padding(horizontal = 24.dp, vertical = 14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween
     ) {
-        Column {
-            Text(text = action, fontSize = 14.sp, fontWeight = FontWeight.Bold)
-            Text(text = time, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Column(Modifier.weight(1f)) {
+            Text(
+                text = action,
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onBackground
+            )
+            Spacer(Modifier.height(3.dp))
+            Text(
+                text = time.uppercase(),
+                style = EyebrowStyle,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
+        Spacer(Modifier.width(16.dp))
         Text(
-            text = points,
-            fontSize = 14.sp,
-            fontWeight = FontWeight.Bold,
-            color = Color(0xFF4CAF50)
+            text = "+" + points,
+            style = MaterialTheme.typography.titleLarge,
+            color = Forest
         )
     }
 }
-

@@ -1,272 +1,305 @@
 package com.ooruva.app.ui.screens
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.expandVertically
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.ExitToApp
-import androidx.compose.material.icons.filled.*
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Remove
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
+import com.ooruva.app.ui.components.EditorialHeader
+import com.ooruva.app.ui.components.GoldRating
+import com.ooruva.app.ui.components.MetaPill
+import com.ooruva.app.ui.components.PremiumCard
+import com.ooruva.app.ui.components.SectionHeader
+import com.ooruva.app.ui.theme.EyebrowStyle
+import com.ooruva.app.ui.theme.Gold
+
+private val groupCategories = listOf("Everything", "Chai", "Food", "Juice", "Shop", "Service")
 
 @Composable
 fun GroupFinderScreen() {
-    var peopleCount by remember { mutableStateOf("1") }
+    var peopleCount by remember { mutableStateOf(4) }
     var budget by remember { mutableStateOf("") }
-    var selectedCategory by remember { mutableStateOf("ALL") }
+    var selectedCategory by remember { mutableStateOf("Everything") }
     var showResults by remember { mutableStateOf(false) }
 
-    Column(
+    val budgetValue = budget.toIntOrNull() ?: 0
+    val perPerson = if (peopleCount > 0 && budgetValue > 0) budgetValue / peopleCount else 0
+
+    LazyColumn(
         modifier = Modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
+            .background(MaterialTheme.colorScheme.background),
+        contentPadding = PaddingValues(bottom = 40.dp)
     ) {
-        // Header
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(MaterialTheme.colorScheme.primary)
-                .padding(16.dp)
-        ) {
-            Text(
-                text = "Group Finder",
-                fontSize = 24.sp,
-                fontWeight = FontWeight.Bold,
-                color = Color.White,
-                modifier = Modifier.padding(bottom = 4.dp)
-            )
-            Text(
-                text = "Find places for your group & budget",
-                fontSize = 12.sp,
-                color = Color.White.copy(alpha = 0.8f)
+        item {
+            EditorialHeader(
+                eyebrow = "Group finder",
+                title = "Who is\neating?",
+                subtitle = "Tell us the headcount and the budget. We will find the places that fit."
             )
         }
 
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            item {
-                // People Counter
-                Card(elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)) {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        Text(
-                            text = "How many people?",
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.Bold,
-                            modifier = Modifier.padding(bottom = 8.dp)
-                        )
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Button(
-                                onClick = { if (peopleCount.toIntOrNull() ?: 1 > 1) peopleCount = (peopleCount.toInt() - 1).toString() },
-                                modifier = Modifier.size(40.dp),
-                                contentPadding = PaddingValues(0.dp)
-                            ) {
-                                Text("-")
-                            }
-                            Text(
-                                text = peopleCount,
-                                fontSize = 20.sp,
-                                fontWeight = FontWeight.Bold,
-                                modifier = Modifier.weight(1f),
-                                textAlign = androidx.compose.ui.text.style.TextAlign.Center
-                            )
-                            Button(
-                                onClick = { peopleCount = (peopleCount.toInt() + 1).toString() },
-                                modifier = Modifier.size(40.dp),
-                                contentPadding = PaddingValues(0.dp)
-                            ) {
-                                Text("+")
-                            }
-                        }
+        item {
+            Column(Modifier.padding(horizontal = 24.dp)) {
+                // Headcount
+                Text("HEADCOUNT", style = EyebrowStyle, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Spacer(Modifier.height(16.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    StepperButton(Icons.Default.Remove, "Fewer") {
+                        if (peopleCount > 1) peopleCount--
+                    }
+                    Text(
+                        text = peopleCount.toString(),
+                        style = MaterialTheme.typography.displayLarge,
+                        color = MaterialTheme.colorScheme.onBackground,
+                        modifier = Modifier.weight(1f),
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                    )
+                    StepperButton(Icons.Default.Add, "More") {
+                        if (peopleCount < 50) peopleCount++
                     }
                 }
-            }
 
-            item {
-                // Budget Input
-                Card(elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)) {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        Text(
-                            text = "Total Budget (₹)",
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.Bold,
-                            modifier = Modifier.padding(bottom = 8.dp)
-                        )
-                        OutlinedTextField(
+                Spacer(Modifier.height(32.dp))
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                Spacer(Modifier.height(28.dp))
+
+                // Budget
+                Text("TOTAL BUDGET", style = EyebrowStyle, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Spacer(Modifier.height(14.dp))
+                Row(verticalAlignment = Alignment.Bottom) {
+                    Text(
+                        text = "₹",
+                        style = MaterialTheme.typography.displaySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(Modifier.width(10.dp))
+                    Box(Modifier.weight(1f)) {
+                        if (budget.isEmpty()) {
+                            Text(
+                                text = "1500",
+                                style = MaterialTheme.typography.displaySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
+                            )
+                        }
+                        BasicTextField(
                             value = budget,
-                            onValueChange = { budget = it },
-                            placeholder = { Text("e.g., 1500") },
-                            modifier = Modifier.fillMaxWidth(),
-                            keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
-                                keyboardType = androidx.compose.ui.text.input.KeyboardType.Number
+                            onValueChange = { if (it.length <= 7) budget = it.filter { c -> c.isDigit() } },
+                            singleLine = true,
+                            cursorBrush = SolidColor(Gold),
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            textStyle = MaterialTheme.typography.displaySmall.copy(
+                                color = MaterialTheme.colorScheme.onBackground
                             ),
-                            leadingIcon = { Text("₹") }
+                            modifier = Modifier.fillMaxWidth()
                         )
-                        if (budget.isNotEmpty()) {
-                            val perPerson = budget.toIntOrNull()?.let { it / (peopleCount.toInt().coerceAtLeast(1)) } ?: 0
+                    }
+                }
+                Spacer(Modifier.height(10.dp))
+                Box(
+                    Modifier
+                        .fillMaxWidth()
+                        .height(1.dp)
+                        .background(MaterialTheme.colorScheme.outlineVariant)
+                )
+
+                // The hero number
+                AnimatedVisibility(visible = perPerson > 0, enter = fadeIn() + expandVertically()) {
+                    Column {
+                        Spacer(Modifier.height(28.dp))
+                        Row(verticalAlignment = Alignment.Bottom) {
                             Text(
-                                text = "₹$perPerson per person",
-                                fontSize = 12.sp,
-                                color = MaterialTheme.colorScheme.primary,
-                                fontWeight = FontWeight.Bold,
-                                modifier = Modifier.padding(top = 8.dp)
+                                text = "₹" + perPerson,
+                                style = MaterialTheme.typography.displayLarge,
+                                color = Gold
+                            )
+                            Spacer(Modifier.width(10.dp))
+                            Text(
+                                text = "per person",
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(bottom = 6.dp)
                             )
                         }
                     }
                 }
-            }
 
-            item {
-                // Category Filter
-                Card(elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)) {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        Text(
-                            text = "Category",
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.Bold,
-                            modifier = Modifier.padding(bottom = 8.dp)
-                        )
-                        val categories = listOf("ALL", "FOOD", "CHAI", "JUICE", "SHOP", "SERVICE")
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .horizontalScroll(rememberScrollState()),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            categories.forEach { category ->
-                                FilterChip(
-                                    selected = selectedCategory == category,
-                                    onClick = { selectedCategory = category },
-                                    label = { Text(category) }
-                                )
-                            }
-                        }
-                    }
-                }
-            }
+                Spacer(Modifier.height(30.dp))
 
-            item {
-                // Find Button
-                Button(
-                    onClick = { showResults = true },
+                // Category
+                Text("NARROW IT DOWN", style = EyebrowStyle, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Spacer(Modifier.height(14.dp))
+                Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(48.dp),
-                    enabled = budget.isNotEmpty() && peopleCount.isNotEmpty()
+                        .horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Icon(Icons.Default.Search, contentDescription = "Find", modifier = Modifier.size(20.dp).padding(end = 8.dp))
-                    Text("Find Places for My Group", fontSize = 16.sp)
+                    groupCategories.forEach { category ->
+                        val selected = selectedCategory == category
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(6.dp))
+                                .background(
+                                    if (selected) MaterialTheme.colorScheme.primaryContainer
+                                    else Color.Transparent
+                                )
+                                .border(
+                                    1.dp,
+                                    if (selected) MaterialTheme.colorScheme.primary.copy(alpha = 0.45f)
+                                    else MaterialTheme.colorScheme.outlineVariant,
+                                    RoundedCornerShape(6.dp)
+                                )
+                                .clickable { selectedCategory = category }
+                                .padding(horizontal = 14.dp, vertical = 9.dp)
+                        ) {
+                            Text(
+                                text = category,
+                                style = MaterialTheme.typography.labelMedium,
+                                color = if (selected) MaterialTheme.colorScheme.onPrimaryContainer
+                                else MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
                 }
+
+                Spacer(Modifier.height(32.dp))
+
+                Button(
+                    onClick = { showResults = true },
+                    enabled = perPerson > 0,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(54.dp),
+                    shape = RoundedCornerShape(10.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Gold,
+                        contentColor = Color.White
+                    )
+                ) {
+                    Text("Find places for my group", style = MaterialTheme.typography.labelLarge)
+                }
+
+                Spacer(Modifier.height(36.dp))
+            }
+        }
+
+        if (showResults && perPerson > 0) {
+            item {
+                SectionHeader(
+                    eyebrow = "" + peopleCount + " people · ₹" + budgetValue,
+                    title = "Three that fit",
+                    modifier = Modifier.padding(horizontal = 24.dp)
+                )
+                Spacer(Modifier.height(18.dp))
             }
 
-            // Results
-            if (showResults && budget.isNotEmpty()) {
-                item {
-                    Text(
-                        text = "Results (${peopleCount} people, ₹${budget} budget)",
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(top = 8.dp)
-                    )
-                }
+            val picks = listOf(
+                Triple("Street Samosa", 4.8f, "Comfortably within budget"),
+                Triple("Chai Wali", 4.5f, "Room for a second round"),
+                Triple("Fresh Juice Corner", 4.7f, "Just about right")
+            )
 
-                items(3) { index ->
-                    GroupFinderResultCard(
-                        vendorName = listOf("Street Samosa", "Chai Wali", "Juice Corner")[index],
-                        perPersonCost = (budget.toInt() / peopleCount.toInt()).toString(),
-                        totalRating = 4.5f,
-                        suitability = "Perfect fit"
-                    )
+            items(picks.size) { index ->
+                val (name, rating, note) = picks[index]
+                PremiumCard(
+                    modifier = Modifier.padding(horizontal = 24.dp),
+                    corner = 16
+                ) {
+                    Column(Modifier.padding(20.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                text = name,
+                                style = MaterialTheme.typography.headlineSmall,
+                                color = MaterialTheme.colorScheme.onSurface,
+                                modifier = Modifier.weight(1f)
+                            )
+                            Text(
+                                text = "₹" + perPerson,
+                                style = MaterialTheme.typography.headlineSmall,
+                                color = Gold
+                            )
+                        }
+                        Spacer(Modifier.height(8.dp))
+                        Text(
+                            text = note,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Spacer(Modifier.height(14.dp))
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            GoldRating(rating = rating, compact = true)
+                            Spacer(Modifier.width(12.dp))
+                            MetaPill(text = "per person")
+                        }
+                    }
                 }
+                Spacer(Modifier.height(14.dp))
             }
         }
     }
 }
 
 @Composable
-fun GroupFinderResultCard(
-    vendorName: String,
-    perPersonCost: String,
-    totalRating: Float,
-    suitability: String
+private fun StepperButton(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    label: String,
+    onClick: () -> Unit,
 ) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+    Box(
+        modifier = Modifier
+            .size(52.dp)
+            .clip(CircleShape)
+            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, CircleShape)
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center
     ) {
-        Column(modifier = Modifier.padding(12.dp)) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 8.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = vendorName,
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Bold
-                )
-                Text(
-                    text = "₹$perPersonCost/person",
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.primary
-                )
-            }
-
-            Row(
-                modifier = Modifier.padding(bottom = 8.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                repeat(5) { index ->
-                    Icon(
-                        imageVector = Icons.Default.Star,
-                        contentDescription = "Star",
-                        tint = if (index < totalRating.toInt()) Color(0xFFFFC107) else Color.LightGray,
-                        modifier = Modifier.size(16.dp)
-                    )
-                }
-                Text(
-                    text = " $totalRating • $suitability",
-                    fontSize = 12.sp,
-                    modifier = Modifier.padding(start = 8.dp)
-                )
-            }
-
-            Button(
-                onClick = {},
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(36.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.primary
-                )
-            ) {
-                Text("View Details", fontSize = 12.sp)
-            }
-        }
+        Icon(
+            icon,
+            contentDescription = label,
+            tint = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.size(19.dp)
+        )
     }
 }
-

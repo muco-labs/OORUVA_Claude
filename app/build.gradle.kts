@@ -52,6 +52,7 @@ dependencies {
     implementation("androidx.core:core-ktx:1.19.0")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.11.0")
     implementation("androidx.activity:activity-compose:1.13.0")
+    implementation("androidx.core:core-splashscreen:1.2.0")
 
     // Jetpack Compose (BOM keeps every compose artifact on one aligned version)
     implementation(platform("androidx.compose:compose-bom:2026.08.00"))
