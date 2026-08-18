@@ -85,10 +85,11 @@ fun RewardsScreen() {
             onClick = {},
             modifier = Modifier
                 .fillMaxWidth()
-                .height(48.dp)
                 .padding(16.dp)
+                .height(48.dp)
         ) {
-            Icon(Icons.Default.CardGiftcard, contentDescription = "Redeem", modifier = Modifier.size(20.dp).padding(end = 8.dp))
+            Icon(Icons.Default.CardGiftcard, contentDescription = "Redeem", modifier = Modifier.size(20.dp))
+            Spacer(modifier = Modifier.width(8.dp))
             Text("Redeem Points", fontSize = 16.sp)
         }
     }

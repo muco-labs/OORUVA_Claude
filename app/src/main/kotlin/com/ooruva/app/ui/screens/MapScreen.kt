@@ -8,7 +8,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Help
-import androidx.compose.material.icons.automirrored.filled.NavigateBefore
+import androidx.compose.material.icons.automirrored.filled.NavigateNext
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -99,7 +99,7 @@ fun MapVendorCard(name: String, distance: String, rating: Float) {
                 Text(text = distance, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             Icon(
-                imageVector = Icons.AutoMirrored.Filled.NavigateBefore,
+                imageVector = Icons.AutoMirrored.Filled.NavigateNext,
                 contentDescription = "Navigate",
                 tint = MaterialTheme.colorScheme.primary
             )

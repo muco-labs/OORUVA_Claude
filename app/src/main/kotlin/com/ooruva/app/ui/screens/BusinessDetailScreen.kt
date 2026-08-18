@@ -134,16 +134,15 @@ fun BusinessDetailScreen(
                         onClick = onCheckIn,
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(48.dp)
                             .padding(vertical = 16.dp)
+                            .height(48.dp)
                     ) {
                         Icon(
                             imageVector = Icons.Default.Place,
                             contentDescription = "Check-in",
-                            modifier = Modifier
-                                .size(20.dp)
-                                .padding(end = 8.dp)
+                            modifier = Modifier.size(20.dp)
                         )
+                        Spacer(modifier = Modifier.width(8.dp))
                         Text("Check-in Here")
                     }
 

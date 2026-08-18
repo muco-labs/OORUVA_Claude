@@ -121,6 +121,12 @@ keep the Maps and Play Services `-dontwarn` entries.
   `Modifier.weight(1f)`, which only exists in that scope
 - `GroupFinderScreen` missing `horizontalScroll` / `rememberScrollState` imports
 - `Icons.Default.NavigateBefore` / `Help` → their `AutoMirrored` equivalents
+- Check-in and Redeem buttons: `.height(48.dp)` followed by `.padding(...)` shrank the
+  content box to 16 dp, so both rendered as bare bars with the icon and label clipped
+  away — padding now comes first. Their icons also had `.size(20.dp).padding(end = 8.dp)`,
+  which ate into the icon instead of spacing it; replaced with a `Spacer`
+- `MapScreen` vendor rows used `NavigateBefore` (a back chevron) on a forward
+  affordance → `NavigateNext`
 - Added the resources the manifest referenced but that did not exist:
   `backup_rules.xml`, `data_extraction_rules.xml`, adaptive launcher icons
 
