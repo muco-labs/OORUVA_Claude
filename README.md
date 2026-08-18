@@ -31,14 +31,21 @@ Gradle/AGP versions in the original spec.
 |---|---|
 | Gradle | 9.7.0 |
 | Android Gradle Plugin | 9.3.1 |
-| Kotlin | 2.4.10 |
+| Kotlin | via AGP built-in Kotlin (no `org.jetbrains.kotlin.android`) |
 | Compose BOM | 2026.08.00 |
-| compileSdk / targetSdk | 36 |
+| compileSdk | 37 (required by Compose BOM 2026.08) |
+| targetSdk | 36 |
 | minSdk | 26 |
 | Java / Kotlin JVM target | 17 |
 
-`local.properties` points at `C:/Users/ELCOT/AppData/Local/Android/Sdk`. AGP will
-download the API 36 platform on first build (only `android-37.0` is installed locally).
+`local.properties` points at `C:/Users/ELCOT/AppData/Local/Android/Sdk`.
+
+AGP 9 enables **built-in Kotlin** by default, which replaces the `org.jetbrains.kotlin.android`
+plugin — that plugin is explicitly incompatible with the new DSL, so it is not applied here.
+Consequences: `jvmTarget` defaults to `compileOptions.targetCompatibility` (17) and needs no
+`kotlin { compilerOptions { } }` block, and `src/main/kotlin` is picked up without a custom
+`sourceSets` entry. The Compose compiler and kotlinx-serialization plugins are still applied
+normally. See <https://kotl.in/gradle/agp-built-in-kotlin>.
 
 ## Build
 
@@ -110,6 +117,10 @@ keep the Maps and Play Services `-dontwarn` entries.
 - `NavGraph.kt` rewritten for all 10 routes with a 6-tab bottom bar and an overflow
   menu; `MainActivity` requests location permission on startup
 - Manifest: `FCMService` entry removed, storage permissions bounded with `maxSdkVersion`
+- `AdminStatCard` given a `RowScope` receiver — it is called inside a `Row` and uses
+  `Modifier.weight(1f)`, which only exists in that scope
+- `GroupFinderScreen` missing `horizontalScroll` / `rememberScrollState` imports
+- `Icons.Default.NavigateBefore` / `Help` → their `AutoMirrored` equivalents
 - Added the resources the manifest referenced but that did not exist:
   `backup_rules.xml`, `data_extraction_rules.xml`, adaptive launcher icons
 
