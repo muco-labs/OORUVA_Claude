@@ -58,39 +58,9 @@ import com.ooruva.app.ui.theme.NightOnBg
 import com.ooruva.app.ui.theme.Spacing
 import kotlinx.coroutines.delay
 
-/** Customer sign-in. Mock: any ten digits, any six-digit code. */
-@Composable
-fun CustomerAuthScreen(
-    onBack: () -> Unit = {},
-    onLoginSuccess: () -> Unit = {},
-) = PhoneAuthScreen(
-    role = UserRole.CUSTOMER,
-    headline = "Welcome to\nOoruva.",
-    blurb = "The chai stalls, samosa carts and juice corners of your street — kept.",
-    onBack = onBack,
-    onLoginSuccess = onLoginSuccess
-)
-
-/** Vendor sign-in. Same flow, different copy and destination. */
-@Composable
-fun VendorAuthScreen(
-    onBack: () -> Unit = {},
-    onLoginSuccess: () -> Unit = {},
-) = PhoneAuthScreen(
-    role = UserRole.VENDOR,
-    headline = "Mind the\nshop.",
-    blurb = "Sign in with the number your customers already call.",
-    onBack = onBack,
-    onLoginSuccess = onLoginSuccess
-)
-
-/** Kept for older call sites. */
-@Composable
-fun AuthScreen(onLoginSuccess: () -> Unit = {}) =
-    CustomerAuthScreen(onLoginSuccess = onLoginSuccess)
 
 @Composable
-private fun PhoneAuthScreen(
+fun PhoneAuthScreen(
     role: UserRole,
     headline: String,
     blurb: String,

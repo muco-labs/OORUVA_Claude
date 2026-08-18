@@ -6,7 +6,7 @@ import com.ooruva.app.data.remote.ProductDto
 import com.ooruva.app.data.remote.ReviewDto
 import com.ooruva.app.data.remote.Supabase
 import com.ooruva.app.data.remote.VendorProfileDto
-import com.ooruva.app.ui.screens.getMockVendors
+import com.ooruva.app.data.mock.getMockVendors
 import io.github.jan.supabase.postgrest.from
 import io.github.jan.supabase.postgrest.query.Order
 import kotlinx.coroutines.Dispatchers

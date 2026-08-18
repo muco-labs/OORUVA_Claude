@@ -21,11 +21,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.automirrored.filled.Help
 import androidx.compose.material.icons.automirrored.filled.NavigateNext
-import androidx.compose.material.icons.filled.AdminPanelSettings
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.RateReview
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.Storefront
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -43,8 +41,6 @@ import com.ooruva.app.ui.theme.Gold
 
 @Composable
 fun ProfileScreen(
-    onOpenVendorPortal: () -> Unit = {},
-    onOpenAdmin: () -> Unit = {},
     onLogout: () -> Unit = {},
 ) {
     LazyColumn(
@@ -125,28 +121,6 @@ fun ProfileScreen(
         }
 
         item {
-            Column(Modifier.padding(horizontal = 24.dp)) {
-                Spacer(Modifier.height(28.dp))
-                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-                Spacer(Modifier.height(28.dp))
-                SectionHeader(eyebrow = "Business tools", title = "Manage")
-                Spacer(Modifier.height(8.dp))
-            }
-        }
-
-        item {
-            SettingRow(
-                Icons.Default.Storefront,
-                "Vendor portal",
-                "Chai Wali · active",
-                onOpenVendorPortal
-            )
-            SettingRow(
-                Icons.Default.AdminPanelSettings,
-                "Admin dashboard",
-                "System overview",
-                onOpenAdmin
-            )
             SettingRow(Icons.AutoMirrored.Filled.ExitToApp, "Log out", null, onLogout)
         }
 

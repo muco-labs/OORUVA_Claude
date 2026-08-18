@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -24,6 +25,7 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.automirrored.filled.NavigateNext
 import androidx.compose.material.icons.filled.Add
@@ -31,6 +33,7 @@ import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.PhotoLibrary
+import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.Verified
 import androidx.compose.material3.HorizontalDivider
@@ -84,7 +87,7 @@ fun VendorHomeScreen(
                 VendorTopBar(
                     eyebrow = "Vendor dashboard",
                     title = "Chai Wali",
-                    verified = true,
+                    verified = false,
                     onProfile = onOpenProfile
                 )
             }
@@ -92,16 +95,14 @@ fun VendorHomeScreen(
             item {
                 Column(Modifier.padding(horizontal = Spacing.lg)) {
                     SectionHeader(eyebrow = "Today", title = "Trading")
-                    Spacer(Modifier.height(Spacing.lg))
+                    Spacer(Modifier.height(Spacing.md))
 
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(28.dp)
-                    ) {
-                        VendorMetric(12, "Check-ins")
-                        VendorMetric(9, "Customers")
-                        VendorMetric(2140, "Revenue", prefix = "₹")
-                    }
+                    // Orders and payments do not exist yet, so there is nothing
+                    // truthful to count. An empty state beats an invented number.
+                    PendingCapability(
+                        "Sales, orders and customer counts appear here once " +
+                            "transactions are enabled on OORUVA."
+                    )
 
                     Spacer(Modifier.height(Spacing.xl))
                     HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
@@ -125,7 +126,10 @@ fun VendorHomeScreen(
                     Spacer(Modifier.height(Spacing.lg))
                     SectionHeader(eyebrow = "Last seven days", title = "Footfall")
                     Spacer(Modifier.height(Spacing.md))
-                    WeekBars(listOf(0.35f, 0.5f, 0.42f, 0.68f, 0.85f, 1f, 0.72f))
+                    PendingCapability(
+                        "Profile views and check-ins are recorded from the day " +
+                            "your listing goes live."
+                    )
                     Spacer(Modifier.height(Spacing.xl))
                     MucoLabsCredit(onDark = true)
                 }
@@ -374,38 +378,11 @@ fun VendorAnalyticsScreen(onBackClick: () -> Unit = {}) {
             item {
                 Column(Modifier.padding(horizontal = Spacing.lg)) {
                     Spacer(Modifier.height(Spacing.lg))
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(28.dp)
-                    ) {
-                        VendorMetric(84, "Check-ins")
-                        VendorMetric(61, "Customers")
-                        VendorMetric(11, "Reviews")
-                    }
-                    Spacer(Modifier.height(Spacing.lg))
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(28.dp)
-                    ) {
-                        VendorMetric(14980, "Revenue", prefix = "₹")
-                        VendorMetric(178, "Avg ticket", prefix = "₹")
-                    }
-
-                    Spacer(Modifier.height(Spacing.xl))
-                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-                    Spacer(Modifier.height(Spacing.lg))
-
-                    SectionHeader(eyebrow = range, title = "Daily check-ins")
-                    Spacer(Modifier.height(Spacing.md))
-                    WeekBars(listOf(0.45f, 0.6f, 0.5f, 0.72f, 0.9f, 1f, 0.78f))
-
-                    Spacer(Modifier.height(Spacing.xl))
-                    SectionHeader(eyebrow = "Versus last week", title = "Comparison")
-                    Spacer(Modifier.height(Spacing.md))
-                    ComparisonRow("Check-ins", "84", "+18%")
-                    ComparisonRow("Unique customers", "61", "+12%")
-                    ComparisonRow("Revenue", "₹14,980", "+9%")
-                    ComparisonRow("Average rating", "4.5", "+0.2")
+                    PendingCapability(
+                        "Analytics need real platform events. Views, product " +
+                            "opens and offer redemptions start accumulating once " +
+                            "your business is verified and visible to customers."
+                    )
                 }
             }
         }
@@ -460,7 +437,7 @@ fun VendorProfileScreen(
                 ToolHeader(
                     eyebrow = "Vendor profile",
                     title = "Chai Wali",
-                    status = "VERIFIED",
+                    status = "AWAITING VERIFICATION",
                     onBackClick = onBackClick
                 )
             }
@@ -471,11 +448,11 @@ fun VendorProfileScreen(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(28.dp)
                     ) {
-                        VendorMetric(48, "Reviews")
+                        VendorMetric(0, "Reviews")
                         Column {
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Text(
-                                    text = "4.5",
+                                    text = "—",
                                     style = MaterialTheme.typography.displaySmall,
                                     color = MaterialTheme.colorScheme.onBackground
                                 )
@@ -494,7 +471,7 @@ fun VendorProfileScreen(
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
-                        VendorMetric(2, "Years")
+                        VendorMetric(0, "Years")
                     }
 
                     Spacer(Modifier.height(Spacing.xl))
@@ -519,18 +496,18 @@ fun VendorProfileScreen(
                         Icon(
                             Icons.Default.Verified,
                             contentDescription = null,
-                            tint = ForestLight,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.size(20.dp)
                         )
                         Spacer(Modifier.width(Spacing.md))
                         Column(Modifier.weight(1f)) {
                             Text(
-                                "Verified business",
+                                "Not yet submitted",
                                 style = MaterialTheme.typography.bodyLarge,
                                 color = MaterialTheme.colorScheme.onBackground
                             )
                             Text(
-                                "Approved 14 March 2026",
+                                "Complete your business profile to enter the verification queue.",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -558,6 +535,90 @@ fun VendorProfileScreen(
 // ─────────────────────────────────────────────────────────────────────────────
 // Shared vendor pieces
 // ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Shown wherever a metric has no truthful source yet. OORUVA never displays an
+ * invented sales, revenue or customer figure (spec 19 and 51).
+ */
+@Composable
+fun PendingCapability(message: String) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(16.dp))
+            .padding(Spacing.md),
+        verticalAlignment = Alignment.Top
+    ) {
+        Icon(
+            Icons.Default.Schedule,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.size(17.dp)
+        )
+        Spacer(Modifier.width(Spacing.md))
+        Text(
+            text = message,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+    }
+}
+
+/** Header for the vendor tool screens: back affordance, eyebrow, title, status. */
+@Composable
+fun ToolHeader(
+    eyebrow: String,
+    title: String,
+    status: String?,
+    onBackClick: () -> Unit,
+) {
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .statusBarsPadding()
+            .padding(horizontal = Spacing.lg)
+            .padding(top = Spacing.md, bottom = 30.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .size(38.dp)
+                .clip(CircleShape)
+                .border(1.dp, MaterialTheme.colorScheme.outlineVariant, CircleShape)
+                .clickable(onClick = onBackClick),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                Icons.AutoMirrored.Filled.ArrowBack,
+                contentDescription = "Back",
+                tint = MaterialTheme.colorScheme.onBackground,
+                modifier = Modifier.size(17.dp)
+            )
+        }
+        Spacer(Modifier.height(26.dp))
+        Text(
+            text = eyebrow.uppercase(),
+            style = EyebrowStyle,
+            color = MaterialTheme.colorScheme.primary
+        )
+        Spacer(Modifier.height(Spacing.sm))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.displayMedium,
+                color = MaterialTheme.colorScheme.onBackground
+            )
+            if (status != null) {
+                Spacer(Modifier.width(14.dp))
+                Text(
+                    text = status,
+                    style = EyebrowStyle,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+    }
+}
 
 @Composable
 private fun VendorTopBar(

@@ -37,6 +37,10 @@ android {
 
     // One codebase, two shipped apps. Separate applicationIds mean a phone can
     // hold both, and each opens straight into its own dashboard.
+    // src/customer/kotlin and src/vendor/kotlin are picked up by AGP convention.
+    // Each flavor therefore compiles only its own screens and navigation: the
+    // customer binary contains no vendor code, and vice versa. Separation is
+    // enforced at compile time, not by runtime conditionals (spec 4).
     flavorDimensions += "audience"
     productFlavors {
         create("customer") {
