@@ -1,6 +1,8 @@
 package com.ooruva.app.ui.screens
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -149,7 +151,7 @@ fun GroupFinderScreen() {
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .horizontalScroll(androidx.compose.foundation.rememberScrollState()),
+                                .horizontalScroll(rememberScrollState()),
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
                             categories.forEach { category ->

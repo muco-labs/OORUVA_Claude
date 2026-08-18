@@ -108,7 +108,7 @@ fun AdminDashboardScreen() {
 }
 
 @Composable
-fun AdminStatCard(value: String, label: String, emoji: String) {
+fun RowScope.AdminStatCard(value: String, label: String, emoji: String) {
     Card(
         modifier = Modifier
             .weight(1f)

@@ -7,6 +7,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.Help
+import androidx.compose.material.icons.automirrored.filled.NavigateBefore
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -78,7 +80,7 @@ fun ProfileScreen() {
         SettingItem("My Reviews", Icons.Default.RateReview)
         SettingItem("Favorite Vendors", Icons.Default.FavoriteBorder)
         SettingItem("Settings", Icons.Default.Settings)
-        SettingItem("Help & Support", Icons.Default.Help)
+        SettingItem("Help & Support", Icons.AutoMirrored.Filled.Help)
         SettingItem("Log Out", Icons.AutoMirrored.Filled.ExitToApp)
     }
 }
