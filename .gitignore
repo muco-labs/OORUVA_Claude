@@ -7,3 +7,6 @@ build/
 captures/
 .externalNativeBuild/
 .cxx/
+
+# Local test database (throwaway PostgreSQL cluster)
+/pgtest/

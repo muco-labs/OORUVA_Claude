@@ -279,11 +279,15 @@ begin
   if allowed is null then
     raise exception 'Unknown role: %', new.role;
   end if;
-  -- Only the service role (edge functions, admin tooling) may mint a role that
-  -- is not self-assignable. current_setting returns 'authenticated' or 'anon'
-  -- for client connections.
-  if not allowed and current_setting('request.jwt.claim.role', true) is distinct from 'service_role' then
-    raise exception 'Role % cannot be self-assigned', new.role;
+  -- A client arriving through PostgREST always carries a role claim of 'anon'
+  -- or 'authenticated'. Its absence means a direct connection: a migration, a
+  -- seed, or an edge function holding the service key. Only those may mint a
+  -- role that is not self-assignable.
+  if not allowed
+     and coalesce(current_setting('request.jwt.claim.role', true), '') in ('anon', 'authenticated')
+  then
+    raise exception 'Role % cannot be self-assigned', new.role
+      using hint = 'Create privileged roles through auth-bootstrap or admin tooling.';
   end if;
   return new;
 end;
