@@ -26,7 +26,7 @@
 // users.firebase_uid purely to look the account up here. See migration 07.
 //
 // Deploy:  supabase functions deploy auth-bootstrap
-// Secrets: supabase secrets set FIREBASE_PROJECT_ID=... SUPABASE_JWT_SECRET=...
+// Secrets: supabase secrets set FIREBASE_PROJECT_ID=... OORUVA_JWT_SECRET=...
 //          SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are injected by the
 //          platform. Never commit any of them.
 
@@ -39,7 +39,13 @@ const FIREBASE_PROJECT_ID = Deno.env.get("FIREBASE_PROJECT_ID")!;
 // The project's JWT secret, from Settings > API > JWT Settings. Without it the
 // function can verify a caller but cannot issue a session, which is the state
 // this file was in before.
-const JWT_SECRET = Deno.env.get("SUPABASE_JWT_SECRET")!;
+//
+// The name deliberately does not begin with SUPABASE_. That prefix is reserved
+// by the platform: `supabase secrets set` refuses it outright, and the runtime
+// injects only its own SUPABASE_* variables, of which the JWT secret is not
+// one. Named SUPABASE_JWT_SECRET this read returns undefined in production and
+// every minted session is signed with the string "undefined".
+const JWT_SECRET = Deno.env.get("OORUVA_JWT_SECRET")!;
 
 /** Roles a client may ever request. 'admin' is deliberately absent. */
 const SELF_ASSIGNABLE_ROLES = ["customer", "vendor"] as const;

@@ -7,13 +7,13 @@
 -- Helper: the users.id belonging to the current auth subject
 create or replace function current_user_id() returns uuid as $fn$
   select id from users where auth_uid = auth.uid();
-$fn$ language sql stable security definer;
+$fn$ language sql stable security definer set search_path = public, pg_temp;
 
 create or replace function is_admin() returns boolean as $fn$
   select exists (
     select 1 from users where auth_uid = auth.uid() and role = 'admin'
   );
-$fn$ language sql stable security definer;
+$fn$ language sql stable security definer set search_path = public, pg_temp;
 
 alter table users              enable row level security;
 alter table customer_profiles  enable row level security;

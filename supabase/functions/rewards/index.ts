@@ -18,7 +18,7 @@
 // the caller.
 //
 // Deploy:  supabase functions deploy rewards
-// Secrets: SUPABASE_JWT_SECRET (shared with auth-bootstrap)
+// Secrets: OORUVA_JWT_SECRET (shared with auth-bootstrap)
 //          SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY are injected by the platform.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -26,7 +26,7 @@ import { verify } from "https://deno.land/x/djwt@v3.0.2/mod.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-const JWT_SECRET = Deno.env.get("SUPABASE_JWT_SECRET")!;
+const JWT_SECRET = Deno.env.get("OORUVA_JWT_SECRET")!;
 
 const db = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
   auth: { persistSession: false },

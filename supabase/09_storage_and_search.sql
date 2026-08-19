@@ -41,7 +41,7 @@ exception
   when others then
     return null;
 end;
-$fn$ language plpgsql immutable;
+$fn$ language plpgsql immutable set search_path = public, pg_temp;
 
 comment on function storage_business_id is
   'Extracts the owning business id from a storage path. Returns null rather than raising on anything unexpected, so a policy using it denies instead of erroring.';
@@ -156,7 +156,7 @@ returns table (
          )) <= radius_km
    order by distance_km
    limit greatest(1, least(max_results, 200));
-$fn$ language sql stable security invoker;
+$fn$ language sql stable security invoker set search_path = public, pg_temp;
 
 comment on function nearby_businesses is
   'Security invoker on purpose: the biz_read policy still decides what the caller may see, so this cannot be used to enumerate drafts.';
@@ -228,7 +228,7 @@ returns table (
      and b.search_vector @@ q.tsq
    order by rank desc, b.name
    limit greatest(1, least(max_results, 200));
-$fn$ language sql stable security invoker;
+$fn$ language sql stable security invoker set search_path = public, pg_temp;
 
 comment on function search_businesses is
   'Prefix full-text search. Security invoker, so biz_read still governs visibility -- a draft cannot be found by guessing its name.';

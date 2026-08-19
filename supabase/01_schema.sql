@@ -217,7 +217,7 @@ begin
   new.updated_at = now();
   return new;
 end;
-$fn$ language plpgsql;
+$fn$ language plpgsql set search_path = public, pg_temp;
 
 drop trigger if exists trg_vendor_touch on vendor_profiles;
 create trigger trg_vendor_touch before update on vendor_profiles
@@ -237,7 +237,7 @@ begin
   end if;
   return null;
 end;
-$fn$ language plpgsql;
+$fn$ language plpgsql set search_path = public, pg_temp;
 
 drop trigger if exists trg_post_like on post_likes;
 create trigger trg_post_like after insert or delete on post_likes
@@ -250,7 +250,7 @@ begin
   on conflict do nothing;
   return new;
 end;
-$fn$ language plpgsql;
+$fn$ language plpgsql set search_path = public, pg_temp;
 
 drop trigger if exists trg_vendor_enqueue on vendor_profiles;
 create trigger trg_vendor_enqueue after insert on vendor_profiles
@@ -295,4 +295,4 @@ returns table (
         )
       ) <= radius_km
   order by distance_km;
-$fn$ language sql stable;
+$fn$ language sql stable set search_path = public, pg_temp;

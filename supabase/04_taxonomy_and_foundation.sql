@@ -291,7 +291,7 @@ begin
   end if;
   return new;
 end;
-$fn$ language plpgsql;
+$fn$ language plpgsql set search_path = public, pg_temp;
 
 drop trigger if exists trg_guard_role on users;
 create trigger trg_guard_role before insert or update of role on users

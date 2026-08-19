@@ -72,7 +72,7 @@ create or replace function owns_business(b uuid) returns boolean as $fn$
     select 1 from businesses
     where id = b and vendor_id = current_user_id()
   );
-$fn$ language sql stable security definer;
+$fn$ language sql stable security definer set search_path = public, pg_temp;
 
 -- ── Documents: never public. Owner and admin only, both directions. ────────
 drop policy if exists doc_owner on business_documents;

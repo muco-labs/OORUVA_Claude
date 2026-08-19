@@ -56,7 +56,7 @@ begin
 
   return new;
 end;
-$fn$ language plpgsql;
+$fn$ language plpgsql set search_path = public, pg_temp;
 
 drop trigger if exists trg_guard_reward_debit on reward_transactions;
 create trigger trg_guard_reward_debit
@@ -79,13 +79,19 @@ create or replace function rewards_earned_today(
      and activity_type = activity
      and direction = 'credit'
      and created_at >= date_trunc('day', now());
-$fn$ language sql stable security definer;
+$fn$ language sql stable security definer set search_path = public, pg_temp;
 
 comment on function rewards_earned_today is
   'Security definer so the award function can check a cap without the caller needing to read the whole ledger.';
 
 revoke all on function rewards_earned_today(uuid, varchar) from public;
 revoke all on function rewards_earned_today(uuid, varchar) from anon;
+-- And from authenticated. The award function calls this with the service role,
+-- which these revokes do not touch. A signed-in customer reaching it directly
+-- could count any other customer's awards for the day, because the function is
+-- security definer and takes the customer id as an argument -- the ledger's own
+-- RLS never gets a say.
+revoke all on function rewards_earned_today(uuid, varchar) from authenticated;
 
 -- == 4. Redemption records what was actually spent ===========================
 alter table offer_redemptions
@@ -116,7 +122,7 @@ begin
 
   return new;
 end;
-$fn$ language plpgsql;
+$fn$ language plpgsql set search_path = public, pg_temp;
 
 drop trigger if exists trg_guard_offer_usage on offer_redemptions;
 create trigger trg_guard_offer_usage

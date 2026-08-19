@@ -50,14 +50,14 @@ comment on column users.auth_uid is
 -- owner-scoped grant on the next request, rather than only blocking new logins.
 create or replace function current_user_id() returns uuid as $fn$
   select id from users where id = auth.uid() and not suspended;
-$fn$ language sql stable security definer;
+$fn$ language sql stable security definer set search_path = public, pg_temp;
 
 create or replace function is_admin() returns boolean as $fn$
   select exists (
     select 1 from users
      where id = auth.uid() and role = 'admin' and not suspended
   );
-$fn$ language sql stable security definer;
+$fn$ language sql stable security definer set search_path = public, pg_temp;
 
 -- users: read yourself, and nothing else. Creation belongs to auth-bootstrap
 -- alone (service role, which bypasses RLS), so the self-insert policy that
@@ -83,7 +83,7 @@ create policy users_admin_write on users
 -- this function exists to close, not a stylistic preference.
 create or replace function vendor_suspended(v uuid) returns boolean as $fn$
   select coalesce((select suspended from users where id = v), false);
-$fn$ language sql stable security definer;
+$fn$ language sql stable security definer set search_path = public, pg_temp;
 
 comment on function vendor_suspended is
   'Security definer so the suspension flag is readable while evaluating another table''s policy. Returns only a boolean, so it leaks nothing beyond the fact being asked about.';
@@ -145,7 +145,7 @@ returns table (
          )) <= radius_km
    order by distance_km
    limit greatest(1, least(max_results, 200));
-$fn$ language sql stable security invoker;
+$fn$ language sql stable security invoker set search_path = public, pg_temp;
 
 comment on function nearby_businesses is
   'Security invoker on purpose: the biz_read policy still decides what the caller may see, so this cannot be used to enumerate drafts.';
@@ -191,7 +191,7 @@ returns integer as $fn$
     from reward_transactions
    where customer_id = coalesce(target, current_user_id())
      and status = 'credited';
-$fn$ language sql stable security invoker;
+$fn$ language sql stable security invoker set search_path = public, pg_temp;
 
 comment on function reward_balance is
   'Security invoker: the ledger RLS policy means a caller can only ever total their own rows. Passing another customer id returns 0 rather than leaking.';

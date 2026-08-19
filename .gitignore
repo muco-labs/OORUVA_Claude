@@ -21,3 +21,10 @@ app/google-services.json
 *.jks
 *.keystore
 keystore.properties
+
+# Edge function secrets, pushed with `supabase secrets set --env-file`.
+# Same reasoning as local.properties: the JWT secret is as powerful as the
+# service role key, and a shell that mangles a pasted value is a worse way to
+# set it than a file.
+supabase/functions/.env
+supabase/.env

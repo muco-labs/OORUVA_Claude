@@ -70,7 +70,7 @@ begin
 
   return auth_user_id;
 end;
-$fn$ language plpgsql security definer;
+$fn$ language plpgsql security definer set search_path = public, pg_temp;
 
 comment on function grant_admin is
   'Operator-only. Links a Supabase auth user to an OORUVA admin row. Requires direct database access -- neither the anon key nor any client session can reach it, because the role guard trigger refuses a self-assigned admin.';
@@ -89,7 +89,7 @@ begin
   insert into audit_log (actor_id, action, entity, entity_id, notes)
   values (target, 'admin_revoked', 'users', target, 'Revoked via revoke_admin()');
 end;
-$fn$ language plpgsql security definer;
+$fn$ language plpgsql security definer set search_path = public, pg_temp;
 
 revoke all on function revoke_admin(uuid) from public;
 revoke all on function revoke_admin(uuid) from anon;

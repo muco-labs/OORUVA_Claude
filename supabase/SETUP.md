@@ -107,10 +107,15 @@ and a self-inserted `users` row could claim `role = 'admin'`.
 ```bash
 supabase functions deploy auth-bootstrap
 supabase secrets set FIREBASE_PROJECT_ID=<your firebase project id>
-supabase secrets set SUPABASE_JWT_SECRET=<Settings > API > JWT Settings>
+supabase secrets set OORUVA_JWT_SECRET=<Settings > API > JWT Settings>
 ```
 
-`SUPABASE_JWT_SECRET` is what lets the function mint a session. Without it
+The name is `OORUVA_JWT_SECRET` and not `SUPABASE_JWT_SECRET` because the
+platform reserves the `SUPABASE_` prefix: `supabase secrets set` refuses it, and
+the runtime injects only its own `SUPABASE_*` variables, which do not include
+the JWT secret. The value is still the project's JWT secret.
+
+`OORUVA_JWT_SECRET` is what lets the function mint a session. Without it
 sign-in verifies the phone number and then hands back nothing Postgres will
 accept: every RLS policy keys off `auth.uid()`, so the app would authenticate
 and then be unable to read or write any of its own data. It is the single most
@@ -122,7 +127,7 @@ important secret here — treat it like the service role key.
 supabase functions deploy rewards
 ```
 
-It reads the same `SUPABASE_JWT_SECRET`, so no new secret is needed. This is the
+It reads the same `OORUVA_JWT_SECRET`, so no new secret is needed. This is the
 only thing that writes `reward_transactions` — there is no client INSERT policy
 on that table, deliberately. Before paying for an action it looks the action up
 and checks it belongs to the caller, so a client asking to be paid for someone
@@ -182,7 +187,7 @@ key grants.
 - [ ] `google-services.json` sits in `app/`
 - [ ] Maps key is restricted to your two package names
 - [ ] `local.properties` holds all three values and is **not** committed
-- [ ] `supabase secrets list` shows `FIREBASE_PROJECT_ID` and `SUPABASE_JWT_SECRET`
+- [ ] `supabase secrets list` shows `FIREBASE_PROJECT_ID` and `OORUVA_JWT_SECRET`
 - [ ] `select count(*) from business_categories;` returns 10
 - [ ] `select count(*) from business_types;` returns 40
 - [ ] At least one row in `users` with `role = 'admin'`
