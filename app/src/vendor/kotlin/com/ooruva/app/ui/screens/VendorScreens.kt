@@ -86,7 +86,7 @@ fun VendorHomeScreen(
             item {
                 VendorTopBar(
                     eyebrow = "Vendor dashboard",
-                    title = "Chai Wali",
+                    title = "Your business",
                     verified = false,
                     onProfile = onOpenProfile
                 )
@@ -163,12 +163,15 @@ fun VendorBusinessInfoScreen(onBackClick: () -> Unit = {}) {
             }
             item {
                 Column(Modifier.padding(horizontal = Spacing.lg)) {
-                    FieldRow("Business name", "Chai Wali")
-                    FieldRow("Category", "Chai")
-                    FieldRow("Address", "Main Street, T. Nagar")
-                    FieldRow("Phone", "+91 98765 43210")
-                    FieldRow("Opening hours", "06:00 — 22:00")
-                    FieldRow("Description", "Authentic Indian tea and snacks, brewed since 1998.")
+                    // Values arrive from businesses once the vendor has
+                    // registered. Until then these are genuinely unset, not
+                    // populated with a sample business.
+                    FieldRow("Business name", null)
+                    FieldRow("Category", null)
+                    FieldRow("Address", null)
+                    FieldRow("Phone", null)
+                    FieldRow("Opening hours", null)
+                    FieldRow("Description", null)
 
                     Spacer(Modifier.height(Spacing.xl))
 
@@ -185,14 +188,15 @@ fun VendorBusinessInfoScreen(onBackClick: () -> Unit = {}) {
 }
 
 @Composable
-private fun FieldRow(label: String, value: String) {
+private fun FieldRow(label: String, value: String?) {
     Column(Modifier.padding(vertical = Spacing.md)) {
         Text(label.uppercase(), style = EyebrowStyle, color = MaterialTheme.colorScheme.primary)
         Spacer(Modifier.height(Spacing.sm))
         Text(
-            text = value,
+            text = value ?: "Not set",
             style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.onBackground
+            color = if (value == null) MaterialTheme.colorScheme.onSurfaceVariant
+            else MaterialTheme.colorScheme.onBackground
         )
         Spacer(Modifier.height(Spacing.md))
         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
@@ -436,7 +440,7 @@ fun VendorProfileScreen(
             item {
                 ToolHeader(
                     eyebrow = "Vendor profile",
-                    title = "Chai Wali",
+                    title = "Your business",
                     status = "AWAITING VERIFICATION",
                     onBackClick = onBackClick
                 )

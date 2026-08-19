@@ -2,7 +2,6 @@ package com.ooruva.app.ui.screens
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -25,16 +24,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import com.ooruva.app.ui.components.CountUpNumber
 import com.ooruva.app.ui.components.EditorialHeader
 import com.ooruva.app.ui.components.GoldRing
 import com.ooruva.app.ui.components.SectionHeader
 import com.ooruva.app.ui.theme.EyebrowStyle
-import com.ooruva.app.ui.theme.Forest
-import com.ooruva.app.ui.theme.Gold
 
-private const val POINTS = 2450
-private const val NEXT_TIER = 3000
+// No reward ledger is connected yet. Rather than show a number nobody earned,
+// the screen renders its empty state until reward_transactions is live.
+private const val LEDGER_CONNECTED = false
 
 @Composable
 fun RewardsScreen() {
@@ -55,13 +52,13 @@ fun RewardsScreen() {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(vertical = 12.dp),
+                    .padding(horizontal = 24.dp, vertical = 12.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                GoldRing(progress = POINTS / NEXT_TIER.toFloat(), size = 230) {
+                GoldRing(progress = 0f, size = 230) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        CountUpNumber(
-                            target = POINTS,
+                        Text(
+                            text = "0",
                             style = MaterialTheme.typography.displayLarge,
                             color = MaterialTheme.colorScheme.onBackground
                         )
@@ -77,15 +74,16 @@ fun RewardsScreen() {
                 Spacer(Modifier.height(24.dp))
 
                 Text(
-                    text = "₹245 in vouchers available",
+                    text = "No rewards earned yet.",
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Spacer(Modifier.height(6.dp))
                 Text(
-                    text = "" + (NEXT_TIER - POINTS) + " points to Gold tier",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.primary,
+                    text = "Check in at a stall, write a review or post a discovery. " +
+                        "Points are credited after verification.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center
                 )
 
@@ -93,13 +91,17 @@ fun RewardsScreen() {
 
                 OutlinedButton(
                     onClick = {},
+                    enabled = LEDGER_CONNECTED,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 24.dp)
                         .height(52.dp),
                     shape = RoundedCornerShape(10.dp),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, Gold),
-                    colors = ButtonDefaults.outlinedButtonColors(contentColor = Gold)
+                    border = androidx.compose.foundation.BorderStroke(
+                        1.dp, MaterialTheme.colorScheme.outlineVariant
+                    ),
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 ) {
                     Text("Redeem points", style = MaterialTheme.typography.labelLarge)
                 }
@@ -116,16 +118,15 @@ fun RewardsScreen() {
             }
         }
 
-        val activity = listOf(
-            Triple("Check-in at Chai Wali", "2 hours ago", 50),
-            Triple("Review posted", "1 day ago", 25),
-            Triple("Referred a friend", "3 days ago", 100),
-            Triple("Check-in at Street Samosa", "6 days ago", 50),
-        )
-
-        items(activity.size) { index ->
-            val (action, time, points) = activity[index]
-            ActivityRow(action, time, points)
+        item {
+            Column(Modifier.padding(horizontal = 24.dp)) {
+                Text(
+                    text = "Nothing here yet. Your earned and redeemed points " +
+                        "will be listed as they happen.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
         }
 
         item {
@@ -160,33 +161,3 @@ fun RewardsScreen() {
     }
 }
 
-@Composable
-private fun ActivityRow(action: String, time: String, points: Int) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 24.dp, vertical = 14.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween
-    ) {
-        Column(Modifier.weight(1f)) {
-            Text(
-                text = action,
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onBackground
-            )
-            Spacer(Modifier.height(3.dp))
-            Text(
-                text = time.uppercase(),
-                style = EyebrowStyle,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-        Spacer(Modifier.width(16.dp))
-        Text(
-            text = "+" + points,
-            style = MaterialTheme.typography.titleLarge,
-            color = Forest
-        )
-    }
-}

@@ -74,18 +74,18 @@ fun ProfileScreen(
                     Spacer(Modifier.width(18.dp))
                     Column {
                         Text(
-                            text = "MEMBER SINCE 2026",
+                            text = "OORUVA MEMBER",
                             style = EyebrowStyle,
                             color = MaterialTheme.colorScheme.primary
                         )
                         Spacer(Modifier.height(6.dp))
                         Text(
-                            text = "Muthu",
+                            text = "Your profile",
                             style = MaterialTheme.typography.displayMedium,
                             color = MaterialTheme.colorScheme.onBackground
                         )
                         Text(
-                            text = "+91 98765 43210",
+                            text = "Sign in to sync across devices",
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -99,9 +99,11 @@ fun ProfileScreen(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(32.dp)
                 ) {
-                    Stat("15", "Check-ins")
-                    Stat("8", "Reviews")
-                    Stat("23", "Saved")
+                    // Counts come from check_ins, reviews and favorites once
+                    // the backend is connected. Zero is the truth today.
+                    Stat("0", "Check-ins")
+                    Stat("0", "Reviews")
+                    Stat("0", "Saved")
                 }
 
                 Spacer(Modifier.height(36.dp))
@@ -114,8 +116,8 @@ fun ProfileScreen(
         }
 
         item {
-            SettingRow(Icons.Default.RateReview, "My reviews", "8 written") {}
-            SettingRow(Icons.Default.FavoriteBorder, "Saved vendors", "23 places") {}
+            SettingRow(Icons.Default.RateReview, "My reviews", "None yet") {}
+            SettingRow(Icons.Default.FavoriteBorder, "Saved vendors", "None yet") {}
             SettingRow(Icons.Default.Settings, "Settings", null) {}
             SettingRow(Icons.AutoMirrored.Filled.Help, "Help and support", null) {}
         }

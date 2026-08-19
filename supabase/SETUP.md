@@ -13,9 +13,15 @@ takes about 25 minutes and is free.
    250 ms from Virginia. This choice is permanent for the project.
 3. Set a strong database password and store it in a password manager.
 4. Open **SQL Editor → New query** and run, in this order:
-   - `supabase/01_schema.sql` — 18 tables, indexes, triggers, distance function
+   - `supabase/01_schema.sql` — 18 core tables, indexes, triggers, distance function
    - `supabase/02_rls.sql` — row level security, and creates both storage buckets
-   - `supabase/03_seed.sql` — optional demo data so screens aren't empty
+   - `supabase/03_seed.sql` — optional demo data (development only)
+   - `supabase/04_taxonomy_and_foundation.sql` — roles, category taxonomy,
+     businesses, documents, verification records, reward ledger, communities,
+     support, assistance, notifications, terms, analytics, orders
+   - `supabase/05_taxonomy_seed.sql` — 10 categories, 40 business types,
+     requirements engine
+   - `supabase/06_rls_foundation.sql` — RLS for everything migration 04 added
 5. **Settings → API** gives you three values:
    - `Project URL`
    - `anon public` key — safe in the app
@@ -65,9 +71,24 @@ nothing secret is committed:
 ```properties
 sdk.dir=C:/Users/ELCOT/AppData/Local/Android/Sdk
 
-SUPABASE_URL=https://YOUR-PROJECT.supabase.co
-SUPABASE_ANON_KEY=eyJhbGciOi...
-MAPS_API_KEY=AIzaSy...
+# Per environment. Debug builds read _DEV, staging _STAGING, release _PROD,
+# so a development build can never reach production data.
+SUPABASE_URL_DEV=https://YOUR-DEV-PROJECT.supabase.co
+SUPABASE_ANON_KEY_DEV=<dev anon key>
+MAPS_API_KEY_DEV=<restricted dev key>
+
+# SUPABASE_URL_STAGING= ...   SUPABASE_URL_PROD= ...
+# Unsuffixed keys still work as a fallback for a single-project setup.
+```
+
+### Deploy the auth bootstrap function
+
+The only path that creates an OORUVA user record, because the anon key is public
+and a self-inserted `users` row could claim `role = 'admin'`.
+
+```bash
+supabase functions deploy auth-bootstrap
+supabase secrets set FIREBASE_PROJECT_ID=<your firebase project id>
 ```
 
 The build reads them into `BuildConfig` and the manifest — see

@@ -8,10 +8,26 @@ val localProps = Properties().apply {
 }
 fun secret(name: String, fallback: String = "") = localProps.getProperty(name) ?: fallback
 
+/**
+ * Environment-scoped secret. Falls back to the unsuffixed key so a single-project
+ * setup keeps working, then to empty so a fresh clone still builds.
+ *   SUPABASE_URL_DEV / _STAGING / _PROD  ->  SUPABASE_URL  ->  ""
+ */
+fun envSecret(name: String, env: String) =
+    localProps.getProperty(name + "_" + env) ?: localProps.getProperty(name) ?: ""
+
+// google-services.json is only present once Firebase is configured. Applying the
+// plugin without it fails the build, so it is applied conditionally.
+val hasGoogleServices = rootProject.file("app/google-services.json").exists()
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.plugin.compose")
     id("org.jetbrains.kotlin.plugin.serialization")
+}
+
+if (rootProject.file("app/google-services.json").exists()) {
+    apply(plugin = "com.google.gms.google-services")
 }
 
 android {
@@ -30,9 +46,8 @@ android {
             useSupportLibrary = true
         }
 
-        buildConfigField("String", "SUPABASE_URL", "\"" + secret("SUPABASE_URL") + "\"")
-        buildConfigField("String", "SUPABASE_ANON_KEY", "\"" + secret("SUPABASE_ANON_KEY") + "\"")
-        manifestPlaceholders["MAPS_API_KEY"] = secret("MAPS_API_KEY")
+        // Environment-specific values are set per build type below.
+        buildConfigField("Boolean", "HAS_FIREBASE", hasGoogleServices.toString())
     }
 
     // One codebase, two shipped apps. Separate applicationIds mean a phone can
@@ -57,13 +72,41 @@ android {
         }
     }
 
+    // Development, staging and production point at different Supabase projects.
+    // A debug build can never reach production data by accident (spec: do not
+    // connect development apps directly to production).
     buildTypes {
+        debug {
+            applicationIdSuffix = ".dev"
+            versionNameSuffix = "-dev"
+            isDebuggable = true
+            buildConfigField("String", "ENVIRONMENT", "\"DEVELOPMENT\"")
+            buildConfigField("String", "SUPABASE_URL", "\"" + envSecret("SUPABASE_URL", "DEV") + "\"")
+            buildConfigField("String", "SUPABASE_ANON_KEY", "\"" + envSecret("SUPABASE_ANON_KEY", "DEV") + "\"")
+            manifestPlaceholders["MAPS_API_KEY"] = envSecret("MAPS_API_KEY", "DEV")
+        }
+
+        create("staging") {
+            initWith(getByName("debug"))
+            applicationIdSuffix = ".staging"
+            versionNameSuffix = "-staging"
+            matchingFallbacks += listOf("debug")
+            buildConfigField("String", "ENVIRONMENT", "\"STAGING\"")
+            buildConfigField("String", "SUPABASE_URL", "\"" + envSecret("SUPABASE_URL", "STAGING") + "\"")
+            buildConfigField("String", "SUPABASE_ANON_KEY", "\"" + envSecret("SUPABASE_ANON_KEY", "STAGING") + "\"")
+            manifestPlaceholders["MAPS_API_KEY"] = envSecret("MAPS_API_KEY", "STAGING")
+        }
+
         release {
             isMinifyEnabled = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            buildConfigField("String", "ENVIRONMENT", "\"PRODUCTION\"")
+            buildConfigField("String", "SUPABASE_URL", "\"" + envSecret("SUPABASE_URL", "PROD") + "\"")
+            buildConfigField("String", "SUPABASE_ANON_KEY", "\"" + envSecret("SUPABASE_ANON_KEY", "PROD") + "\"")
+            manifestPlaceholders["MAPS_API_KEY"] = envSecret("MAPS_API_KEY", "PROD")
         }
     }
 
@@ -109,6 +152,12 @@ dependencies {
     // Serialization (data models are @Serializable, ready for a backend)
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.11.0")
     implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.6.2")
+
+    // Firebase — identity only. Resolves without google-services.json; the
+    // plugin (and therefore real initialisation) activates once that file lands.
+    implementation(platform("com.google.firebase:firebase-bom:33.7.0"))
+    implementation("com.google.firebase:firebase-auth")
+    implementation("com.google.firebase:firebase-appcheck-playintegrity")
 
     // Backend — wired but inert until SUPABASE_URL / SUPABASE_ANON_KEY are supplied
     implementation(platform("io.github.jan-tennert.supabase:bom:3.0.3"))
