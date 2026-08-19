@@ -9,8 +9,7 @@ export default function Users() {
 
   const load = async () => {
     try {
-      const { data } = await fetchUsers()
-      setRows(data)
+      setRows(await fetchUsers())
     } catch (e) {
       setError(e.message)
     }

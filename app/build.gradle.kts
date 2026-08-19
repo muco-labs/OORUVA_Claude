@@ -16,6 +16,26 @@ fun secret(name: String, fallback: String = "") = localProps.getProperty(name) ?
 fun envSecret(name: String, env: String) =
     localProps.getProperty(name + "_" + env) ?: localProps.getProperty(name) ?: ""
 
+/**
+ * Release signing, read from keystore.properties in the project root
+ * (git-ignored, like local.properties).
+ *
+ *   storeFile=../release.jks
+ *   storePassword=...
+ *   keyAlias=ooruva
+ *   keyPassword=...
+ *
+ * Absent on a normal clone and in CI, and that is deliberate: a keystore in CI
+ * is a keystore any workflow change on the default branch can exfiltrate.
+ * Without it a release build still compiles and shrinks, it just comes out
+ * unsigned -- which is exactly what CI should be producing.
+ */
+val keystoreProps = Properties().apply {
+    val f = rootProject.file("keystore.properties")
+    if (f.exists()) f.inputStream().use { load(it) }
+}
+val hasSigningConfig = keystoreProps.getProperty("storeFile") != null
+
 // google-services.json is only present once Firebase is configured. Applying the
 // plugin without it fails the build, so it is applied conditionally.
 val hasGoogleServices = rootProject.file("app/google-services.json").exists()
@@ -56,6 +76,17 @@ android {
     // Each flavor therefore compiles only its own screens and navigation: the
     // customer binary contains no vendor code, and vice versa. Separation is
     // enforced at compile time, not by runtime conditionals (spec 4).
+    signingConfigs {
+        if (hasSigningConfig) {
+            create("release") {
+                storeFile = rootProject.file(keystoreProps.getProperty("storeFile"))
+                storePassword = keystoreProps.getProperty("storePassword")
+                keyAlias = keystoreProps.getProperty("keyAlias")
+                keyPassword = keystoreProps.getProperty("keyPassword")
+            }
+        }
+    }
+
     flavorDimensions += "audience"
     productFlavors {
         create("customer") {
@@ -98,11 +129,19 @@ android {
         }
 
         release {
-            isMinifyEnabled = false
+            // Shrinking is not only about size. An unminified APK hands anyone
+            // who unzips it the full class and method names of the auth and
+            // reward paths.
+            isMinifyEnabled = true
+            isShrinkResources = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            // Null leaves the build unsigned rather than falling back to the
+            // debug key. A release APK signed with the debug key is worse than
+            // an unsigned one: it looks shippable and cannot be updated later.
+            signingConfig = if (hasSigningConfig) signingConfigs.getByName("release") else null
             buildConfigField("String", "ENVIRONMENT", "\"PRODUCTION\"")
             buildConfigField("String", "SUPABASE_URL", "\"" + envSecret("SUPABASE_URL", "PROD") + "\"")
             buildConfigField("String", "SUPABASE_ANON_KEY", "\"" + envSecret("SUPABASE_ANON_KEY", "PROD") + "\"")
@@ -134,6 +173,10 @@ dependencies {
     implementation("androidx.core:core-ktx:1.19.0")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.11.0")
     implementation("androidx.activity:activity-compose:1.13.0")
+    // Pinned explicitly. Something in the Play Services / Firebase graph drags
+    // in a pre-1.3 fragment, and registerForActivityResult is silently broken
+    // on those versions -- lintVital fails the release build over it, correctly.
+    implementation("androidx.fragment:fragment:1.8.6")
     implementation("androidx.core:core-splashscreen:1.2.0")
 
     // Jetpack Compose (BOM keeps every compose artifact on one aligned version)

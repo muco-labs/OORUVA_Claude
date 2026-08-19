@@ -41,11 +41,20 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.platform.LocalContext
+import com.ooruva.app.data.auth.AuthRepository
+import com.ooruva.app.data.auth.AuthResult
+import com.ooruva.app.data.auth.OtpRequest
+import com.ooruva.app.data.auth.SessionStore
 import com.ooruva.app.data.models.UserRole
+import com.ooruva.app.data.remote.DataResult
+import com.ooruva.app.data.repository.BusinessRepository
+import kotlinx.coroutines.launch
 import com.ooruva.app.ui.components.GoldUnderline
 import com.ooruva.app.ui.components.MucoLabsCredit
 import com.ooruva.app.ui.components.OoruvaMark
@@ -66,6 +75,12 @@ fun PhoneAuthScreen(
     blurb: String,
     onBack: () -> Unit,
     onLoginSuccess: () -> Unit,
+    /**
+     * Vendor flavour only: a vendor with no business yet goes to onboarding
+     * rather than an empty dashboard. Defaults to null so the customer graph,
+     * which has no such step, needs no change.
+     */
+    onNeedsOnboarding: (() -> Unit)? = null,
 ) {
     var phone by remember { mutableStateOf("") }
     var otp by remember { mutableStateOf("") }
@@ -73,6 +88,30 @@ fun PhoneAuthScreen(
     var showOtp by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf("") }
     var secondsLeft by remember { mutableIntStateOf(0) }
+    var verificationId by remember { mutableStateOf<String?>(null) }
+
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val auth = remember(context) { AuthRepository(SessionStore(context)) }
+
+    /**
+     * Where a signed-in vendor lands. A vendor with no business row has not
+     * finished onboarding, so sending them to the dashboard would show an empty
+     * screen with no way forward.
+     */
+    suspend fun routeAfterSignIn() {
+        if (role == UserRole.VENDOR && onNeedsOnboarding != null) {
+            val hasBusiness = when (val mine = BusinessRepository.mine()) {
+                is DataResult.Success -> mine.data.isNotEmpty()
+                // Could not tell. Onboarding resumes an existing draft anyway,
+                // so it is the safe direction to guess in.
+                else -> false
+            }
+            if (hasBusiness) onLoginSuccess() else onNeedsOnboarding()
+        } else {
+            onLoginSuccess()
+        }
+    }
 
     // 30-second resend countdown, restarted every time a code is "sent".
     LaunchedEffect(showOtp, secondsLeft) {
@@ -169,25 +208,61 @@ fun PhoneAuthScreen(
                 loading = isLoading,
                 enabled = if (showOtp) otp.isNotEmpty() else phone.isNotEmpty(),
                 onClick = {
+                    val activity = context as? android.app.Activity
                     if (!showOtp) {
-                        if (phone.length == 10) {
-                            errorMessage = ""
-                            showOtp = true
-                            secondsLeft = 30
-                        } else {
+                        if (phone.length != 10) {
                             errorMessage = "That needs to be ten digits"
-                        }
-                    } else {
-                        if (otp.length == 6) {
+                        } else if (activity == null) {
+                            errorMessage = "Could not start sign-in on this screen."
+                        } else {
                             errorMessage = ""
                             isLoading = true
-                            android.util.Log.d(
-                                "OORUVA",
-                                "Signed in as " + role.name + " with phone " + phone
-                            )
-                            onLoginSuccess()
-                        } else {
+                            scope.launch {
+                                when (val result = auth.requestOtp(activity, phone, role)) {
+                                    is OtpRequest.Sent -> {
+                                        verificationId = result.verificationId
+                                        showOtp = true
+                                        secondsLeft = 30
+                                        isLoading = false
+                                    }
+                                    // Play Integrity vouched for the device, so
+                                    // no SMS was sent and nothing needs typing.
+                                    is OtpRequest.AutoVerified -> {
+                                        isLoading = false
+                                        routeAfterSignIn()
+                                    }
+                                    is OtpRequest.Failed -> {
+                                        isLoading = false
+                                        errorMessage = result.message
+                                    }
+                                }
+                            }
+                        }
+                    } else {
+                        val id = verificationId
+                        if (otp.length != 6) {
                             errorMessage = "The code is six digits"
+                        } else if (id == null) {
+                            errorMessage = "That code has expired. Ask for a new one."
+                        } else {
+                            errorMessage = ""
+                            isLoading = true
+                            scope.launch {
+                                when (val result = auth.verifyOtp(id, otp, role)) {
+                                    is AuthResult.Success -> {
+                                        isLoading = false
+                                        routeAfterSignIn()
+                                    }
+                                    is AuthResult.WrongApp -> {
+                                        isLoading = false
+                                        errorMessage = result.message
+                                    }
+                                    is AuthResult.Failed -> {
+                                        isLoading = false
+                                        errorMessage = result.message
+                                    }
+                                }
+                            }
                         }
                     }
                 }
@@ -208,8 +283,18 @@ fun PhoneAuthScreen(
                             style = MaterialTheme.typography.labelMedium,
                             color = GoldBright,
                             modifier = Modifier.clickable {
-                                secondsLeft = 30
                                 otp = ""
+                                errorMessage = ""
+                                secondsLeft = 30
+                                scope.launch {
+                                    val activity = context as? android.app.Activity
+                                        ?: return@launch
+                                    when (val again = auth.requestOtp(activity, phone, role)) {
+                                        is OtpRequest.Sent -> verificationId = again.verificationId
+                                        is OtpRequest.AutoVerified -> routeAfterSignIn()
+                                        is OtpRequest.Failed -> errorMessage = again.message
+                                    }
+                                }
                             }
                         )
                     }

@@ -44,7 +44,7 @@ grant usage, select on all sequences in schema public to ooruva_client;
 -- ═══════════════════════════════════════════════════════════════════════════
 begin;
 set local role ooruva_client;
-select test_as('aaaaaaaa-0000-0000-0000-00000000a111');
+select test_as('aaaaaaaa-0000-0000-0000-000000000001');
 
 select expect_visible(
   'customer sees only verified businesses',
@@ -87,7 +87,7 @@ rollback;
 -- ═══════════════════════════════════════════════════════════════════════════
 begin;
 set local role ooruva_client;
-select test_as('bbbbbbbb-0000-0000-0000-00000000b111');
+select test_as('bbbbbbbb-0000-0000-0000-000000000002');
 
 select expect_visible(
   'vendor sees own draft plus verified businesses',
@@ -124,7 +124,7 @@ rollback;
 -- ═══════════════════════════════════════════════════════════════════════════
 begin;
 set local role ooruva_client;
-select test_as('cccccccc-0000-0000-0000-00000000c222');
+select test_as('cccccccc-0000-0000-0000-000000000003');
 
 select expect_visible(
   'rival vendor cannot read another vendor documents',
@@ -164,7 +164,7 @@ rollback;
 -- ═══════════════════════════════════════════════════════════════════════════
 begin;
 set local role ooruva_client;
-select test_as('aaaaaaaa-0000-0000-0000-00000000a111');
+select test_as('aaaaaaaa-0000-0000-0000-000000000001');
 
 select expect_denied(
   'client cannot self-insert an admin user',
@@ -182,7 +182,7 @@ rollback;
 -- ═══════════════════════════════════════════════════════════════════════════
 begin;
 set local role ooruva_client;
-select test_as('dddddddd-0000-0000-0000-00000000d111');
+select test_as('dddddddd-0000-0000-0000-000000000004');
 
 select expect_visible('admin sees every business', 'select id from businesses', 3);
 select expect_visible('admin sees every document', 'select id from business_documents', 1);

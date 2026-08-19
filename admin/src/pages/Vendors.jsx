@@ -1,7 +1,9 @@
 import React, { useEffect, useMemo, useState } from 'react'
-import { fetchVendors, setVerification, exportCsv } from '../services/dataService'
+import { fetchBusinesses, decideVerification, exportCsv } from '../services/dataService'
+import { StatusPill } from './Dashboard'
 
-const statuses = ['', 'pending', 'verified', 'rejected', 'needs_changes']
+// Mirrors the businesses.status check constraint in migration 04.
+const statuses = ['', 'draft', 'submitted', 'verified', 'needs_changes', 'rejected', 'suspended']
 
 export default function Vendors() {
   const [rows, setRows] = useState([])
@@ -11,8 +13,7 @@ export default function Vendors() {
 
   const load = async () => {
     try {
-      const { data } = await fetchVendors(status || undefined)
-      setRows(data)
+      setRows(await fetchBusinesses(status || undefined))
     } catch (e) {
       setError(e.message)
     }
@@ -21,18 +22,23 @@ export default function Vendors() {
   useEffect(() => { load() }, [status])
 
   const filtered = useMemo(
-    () => rows.filter((v) =>
-      !q || v.business_name?.toLowerCase().includes(q.toLowerCase()) ||
-      v.business_category?.toLowerCase().includes(q.toLowerCase())
+    () => rows.filter((b) =>
+      !q ||
+      b.name?.toLowerCase().includes(q.toLowerCase()) ||
+      b.business_types?.name?.toLowerCase().includes(q.toLowerCase()) ||
+      b.district?.toLowerCase().includes(q.toLowerCase())
     ),
     [rows, q]
   )
 
-  const revoke = async (v) => {
-    const reason = window.prompt(`Revoke verification for ${v.business_name}? Reason:`)
-    if (!reason) return
+  const revoke = async (b) => {
+    // A reason is mandatory: the vendor sees it, and "your listing came down"
+    // with no explanation is how a small business decides the platform is
+    // arbitrary and leaves.
+    const reason = window.prompt(`Revoke verification for ${b.name}? Reason:`)
+    if (!reason?.trim()) return
     try {
-      await setVerification(v.vendor_id, 'needs_changes', reason)
+      await decideVerification(b.id, 'needs_changes', reason.trim())
       await load()
     } catch (e) {
       setError(e.message)
@@ -42,7 +48,7 @@ export default function Vendors() {
   return (
     <div>
       <div className="eyebrow">Directory</div>
-      <h1 className="text-4xl mt-2 mb-8">Vendors</h1>
+      <h1 className="text-4xl mt-2 mb-8">Businesses</h1>
 
       {error && <p className="mb-4 text-brick text-sm">{error}</p>}
 
@@ -50,7 +56,7 @@ export default function Vendors() {
         <input
           value={q}
           onChange={(e) => setQ(e.target.value)}
-          placeholder="Search name or category"
+          placeholder="Search name, type or district"
           className="border border-outline rounded-[10px] px-3 py-2 text-sm w-64 focus:outline-none focus:border-gold"
         />
         <select
@@ -62,7 +68,7 @@ export default function Vendors() {
             <option key={s} value={s}>{s === '' ? 'All statuses' : s}</option>
           ))}
         </select>
-        <button className="btn-ghost" onClick={() => exportCsv(filtered, 'ooruva-vendors.csv')}>
+        <button className="btn-ghost" onClick={() => exportCsv(filtered, 'ooruva-businesses.csv')}>
           Export CSV
         </button>
       </div>
@@ -72,32 +78,26 @@ export default function Vendors() {
           <thead className="bg-ivory">
             <tr className="text-left">
               <th className="p-3 eyebrow">Business</th>
-              <th className="p-3 eyebrow">Category</th>
+              <th className="p-3 eyebrow">Type</th>
+              <th className="p-3 eyebrow">District</th>
               <th className="p-3 eyebrow">Phone</th>
               <th className="p-3 eyebrow">Status</th>
-              <th className="p-3 eyebrow">Joined</th>
+              <th className="p-3 eyebrow">Created</th>
               <th className="p-3"></th>
             </tr>
           </thead>
           <tbody className="divide-y divide-outline">
-            {filtered.map((v) => (
-              <tr key={v.vendor_id}>
-                <td className="p-3 font-semibold">{v.business_name}</td>
-                <td className="p-3">{v.business_category}</td>
-                <td className="p-3">{v.phone ?? '—'}</td>
-                <td className="p-3">
-                  <span className={`text-[11px] px-2 py-1 rounded-full border ${
-                    v.verification_status === 'verified' ? 'border-forest text-forest'
-                      : v.verification_status === 'rejected' ? 'border-brick text-brick'
-                      : 'border-gold text-gold'
-                  }`}>
-                    {v.verification_status}
-                  </span>
-                </td>
-                <td className="p-3 text-warm">{new Date(v.created_at).toLocaleDateString()}</td>
+            {filtered.map((b) => (
+              <tr key={b.id}>
+                <td className="p-3 font-semibold">{b.name}</td>
+                <td className="p-3">{b.business_types?.name ?? '—'}</td>
+                <td className="p-3">{b.district ?? '—'}</td>
+                <td className="p-3">{b.phone ?? '—'}</td>
+                <td className="p-3"><StatusPill status={b.status} /></td>
+                <td className="p-3 text-warm">{new Date(b.created_at).toLocaleDateString()}</td>
                 <td className="p-3 text-right">
-                  {v.verification_status === 'verified' && (
-                    <button className="text-brick text-xs hover:underline" onClick={() => revoke(v)}>
+                  {b.status === 'verified' && (
+                    <button className="text-brick text-xs hover:underline" onClick={() => revoke(b)}>
                       Revoke
                     </button>
                   )}
@@ -105,7 +105,7 @@ export default function Vendors() {
               </tr>
             ))}
             {filtered.length === 0 && (
-              <tr><td colSpan={6} className="p-6 text-center text-warm">No vendors match.</td></tr>
+              <tr><td colSpan={7} className="p-6 text-center text-warm">No businesses match.</td></tr>
             )}
           </tbody>
         </table>

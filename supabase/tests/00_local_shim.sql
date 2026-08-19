@@ -34,6 +34,20 @@ create table if not exists storage.objects (
 
 alter table storage.objects enable row level security;
 
+-- Supabase ships these two roles; a bare PostgreSQL does not. Migrations that
+-- REVOKE from them (08) fail without them, so the shim provides them for the
+-- same reason it provides auth.uid() -- to let the real migration run unedited.
+do $roles$
+begin
+  if not exists (select 1 from pg_roles where rolname = 'anon') then
+    create role anon nologin;
+  end if;
+  if not exists (select 1 from pg_roles where rolname = 'authenticated') then
+    create role authenticated nologin;
+  end if;
+end
+$roles$;
+
 -- ── Test helpers ───────────────────────────────────────────────────────────
 
 -- Become a given OORUVA user for the remainder of the transaction.
@@ -95,7 +109,16 @@ begin
       case when affected = 0 then null
            else affected::text || ' row(s) unexpectedly written' end);
   exception
-    when insufficient_privilege or check_violation or raise_exception then
+    -- A refusal can arrive as a policy denial, a trigger raising, or a
+    -- constraint firing. All three mean the database said no, which is what
+    -- this helper is asserting -- catching only the first two made an
+    -- integrity constraint abort the suite instead of passing the test.
+    when insufficient_privilege
+      or check_violation
+      or raise_exception
+      or unique_violation
+      or foreign_key_violation
+      or not_null_violation then
       perform expect(test_name, true, 'refused: ' || sqlerrm);
   end;
 end;
@@ -110,5 +133,21 @@ begin
   execute 'select count(*) from (' || stmt || ') q' into actual;
   perform expect(test_name, actual = expected,
     'expected ' || expected || ', saw ' || actual);
+end;
+$fn$ language plpgsql;
+
+/**
+ * Asserts a scalar expression evaluates to an expected value. Used for the
+ * derived reward balance, where "how many rows" is the wrong question and the
+ * arithmetic itself is what has to be right.
+ */
+create or replace function expect_value(test_name text, stmt text, expected text)
+returns void as $fn$
+declare
+  actual text;
+begin
+  execute stmt into actual;
+  perform expect(test_name, coalesce(actual, '<null>') = expected,
+    'expected ' || expected || ', saw ' || coalesce(actual, '<null>'));
 end;
 $fn$ language plpgsql;

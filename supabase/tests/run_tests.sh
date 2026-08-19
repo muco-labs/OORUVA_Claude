@@ -1,46 +1,61 @@
 #!/usr/bin/env bash
 # ============================================================================
-# OORUVA — run the migrations and the role-security suite against a throwaway
-# local PostgreSQL. No credentials, no cloud project, no production data.
+# OORUVA — run the migrations and the security suites against a throwaway
+# PostgreSQL. No credentials, no cloud project, no production data.
 #
+# Local, managing its own cluster:
 #   PGROOT=/d/pgtest/pgsql ./supabase/tests/run_tests.sh
 #
-# The database is dropped and rebuilt on every run, so a pass means the
-# migrations apply cleanly from nothing — not that they happened to work once.
+# Against a Postgres that already exists (CI service container):
+#   PGHOST=localhost PGPORT=5432 PGUSER=postgres PGPASSWORD=postgres \
+#     ./supabase/tests/run_tests.sh
+#
+# Every suite gets a database built from nothing, so a pass means the
+# migrations apply cleanly from empty — not that they happened to work once.
 # ============================================================================
 set -uo pipefail
 
-PGROOT="${PGROOT:-/d/pgtest/pgsql}"
-PGDATA="${PGDATA:-/d/pgtest/data}"
-PGPORT="${PGPORT:-55432}"
 DB="ooruva_test"
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 
-BIN="$PGROOT/bin"
-export PATH="$BIN:$PATH"
+# An externally supplied PGHOST means someone else owns the server -- CI, or a
+# developer pointing at their own instance. In that case do not try to initdb
+# or start anything; just connect.
+EXTERNAL_PG="${PGHOST:-}"
 
-command -v postgres >/dev/null || { echo "postgres not found under $BIN"; exit 1; }
+if [ -n "$EXTERNAL_PG" ]; then
+  PGPORT="${PGPORT:-5432}"
+  PGUSER="${PGUSER:-postgres}"
+  export PGPASSWORD="${PGPASSWORD:-}"
+  PSQL="psql -h $PGHOST -p $PGPORT -U $PGUSER -v ON_ERROR_STOP=1 -q"
+  # failures.log is written next to the suites when there is no PGDATA to own it.
+  PGDATA="${PGDATA:-$HERE/supabase/tests}"
+else
+  PGROOT="${PGROOT:-/d/pgtest/pgsql}"
+  PGDATA="${PGDATA:-/d/pgtest/data}"
+  PGPORT="${PGPORT:-55432}"
 
-# ── Cluster ────────────────────────────────────────────────────────────────
-if [ ! -f "$PGDATA/PG_VERSION" ]; then
-  echo "== initdb"
-  mkdir -p "$PGDATA"
-  initdb -D "$PGDATA" -U postgres --auth=trust --encoding=UTF8 >/dev/null || exit 1
+  BIN="$PGROOT/bin"
+  export PATH="$BIN:$PATH"
+
+  command -v postgres >/dev/null || { echo "postgres not found under $BIN"; exit 1; }
+
+  if [ ! -f "$PGDATA/PG_VERSION" ]; then
+    echo "== initdb"
+    mkdir -p "$PGDATA"
+    initdb -D "$PGDATA" -U postgres --auth=trust --encoding=UTF8 >/dev/null || exit 1
+  fi
+
+  if ! pg_isready -p "$PGPORT" -q 2>/dev/null; then
+    echo "== starting postgres on :$PGPORT"
+    pg_ctl -D "$PGDATA" -o "-p $PGPORT -c listen_addresses=127.0.0.1" -l "$PGDATA/server.log" -w start \
+      || { tail -20 "$PGDATA/server.log"; exit 1; }
+  fi
+
+  PSQL="psql -h 127.0.0.1 -p $PGPORT -U postgres -v ON_ERROR_STOP=1 -q"
 fi
-
-if ! pg_isready -p "$PGPORT" -q 2>/dev/null; then
-  echo "== starting postgres on :$PGPORT"
-  pg_ctl -D "$PGDATA" -o "-p $PGPORT -c listen_addresses=127.0.0.1" -l "$PGDATA/server.log" -w start \
-    || { tail -20 "$PGDATA/server.log"; exit 1; }
-fi
-
-PSQL="psql -h 127.0.0.1 -p $PGPORT -U postgres -v ON_ERROR_STOP=1 -q"
 
 # ── Rebuild from nothing ───────────────────────────────────────────────────
-echo "== rebuilding $DB"
-$PSQL -d postgres -c "drop database if exists $DB;" >/dev/null
-$PSQL -d postgres -c "create database $DB;" >/dev/null
-
 fail=0
 apply() {
   printf '   %-38s ' "$(basename "$1")"
@@ -53,39 +68,64 @@ apply() {
   fi
 }
 
-# The shim goes first: 02_rls.sql defines current_user_id() whose body
-# references auth.uid(), and a SQL function body is parsed at creation time.
-# Supabase already has that schema; a bare PostgreSQL does not.
-echo "== local shim (test only, never run against Supabase)"
-apply "$HERE/supabase/tests/00_local_shim.sql"
+MIGRATIONS="01_schema 02_rls 04_taxonomy_and_foundation 05_taxonomy_seed 06_rls_foundation 07_identity_and_model 08_admin_access 09_storage_and_search 10_reward_integrity"
 
-echo "== migrations"
-for f in 01_schema 02_rls 04_taxonomy_and_foundation 05_taxonomy_seed 06_rls_foundation; do
-  apply "$HERE/supabase/$f.sql"
-done
+# Each suite gets a database built from nothing. Sharing one database between
+# suites let suite 01's fixtures win an `on conflict do nothing` in suite 02 and
+# silently changed what suite 02 was testing -- the assertions still ran, but
+# against rows suite 02 had not written. Isolation is cheaper than that class of
+# false result.
+rebuild() {
+  $PSQL -d postgres -c "drop database if exists $DB;" >/dev/null
+  $PSQL -d postgres -c "create database $DB;" >/dev/null
 
-[ "$fail" -eq 0 ] || { echo; echo "migrations did not apply cleanly — stopping"; exit 1; }
+  # The shim goes first: 02_rls.sql defines current_user_id() whose body
+  # references auth.uid(), and a SQL function body is parsed at creation time.
+  # Supabase already has that schema; a bare PostgreSQL does not.
+  apply "$HERE/supabase/tests/00_local_shim.sql"
+  for f in $MIGRATIONS; do
+    apply "$HERE/supabase/$f.sql"
+  done
+}
 
-# -- Tests ------------------------------------------------------------------
-# Each block runs inside a transaction that is rolled back, so the assertions
-# cannot be counted from a table: the rollback discards those rows too. The
-# NOTICE stream is the record of truth.
-echo "== role security suite"
-out=$($PSQL -d "$DB" -f "$HERE/supabase/tests/01_role_security.sql" 2>&1)
+total_passed=0
+total_failed=0
+total_errors=0
+: > "$PGDATA/failures.log"
 
-echo "$out" | grep -oE "(PASS|FAIL)  .*" | sed 's/^/   /'
+run_suite() {
+  local label="$1" file="$2"
 
-passed=$(echo "$out" | grep -c "NOTICE:  PASS")
-failed=$(echo "$out" | grep -c "NOTICE:  FAIL")
-errors=$(echo "$out" | grep -c "^psql:.*ERROR:")
+  echo "== rebuilding $DB for $label"
+  rebuild
+  [ "$fail" -eq 0 ] || { echo; echo "migrations did not apply cleanly -- stopping"; exit 1; }
 
-echo
-echo "== summary"
-echo "   passed=$passed  failed=$failed  sql_errors=$errors"
+  echo "== $label"
+  local out
+  out=$($PSQL -d "$DB" -f "$file" 2>&1)
 
-if [ "$failed" -gt 0 ] || [ "$errors" -gt 0 ]; then
+  echo "$out" | grep -oE "(PASS|FAIL)  .*" | sed 's/^/   /'
+
+  total_passed=$(( total_passed + $(echo "$out" | grep -c "NOTICE:  PASS") ))
+  total_failed=$(( total_failed + $(echo "$out" | grep -c "NOTICE:  FAIL") ))
+  total_errors=$(( total_errors + $(echo "$out" | grep -c "^psql:.*ERROR:") ))
+
+  echo "$out" | grep -E "NOTICE:  FAIL|^psql:.*ERROR:" >> "$PGDATA/failures.log"
   echo
-  echo "$out" | grep -E "NOTICE:  FAIL|^psql:.*ERROR:" | head -20 | sed 's/^/   /'
+}
+
+run_suite "role security suite"  "$HERE/supabase/tests/01_role_security.sql"
+run_suite "model security suite" "$HERE/supabase/tests/02_model_security.sql"
+run_suite "admin access suite"  "$HERE/supabase/tests/03_admin_access.sql"
+run_suite "storage and search suite" "$HERE/supabase/tests/04_storage_and_search.sql"
+run_suite "reward integrity suite" "$HERE/supabase/tests/05_reward_integrity.sql"
+
+echo "== summary"
+echo "   passed=$total_passed  failed=$total_failed  sql_errors=$total_errors"
+
+if [ "$total_failed" -gt 0 ] || [ "$total_errors" -gt 0 ]; then
+  echo
+  head -20 "$PGDATA/failures.log" | sed 's/^/   /'
   exit 1
 fi
 exit 0

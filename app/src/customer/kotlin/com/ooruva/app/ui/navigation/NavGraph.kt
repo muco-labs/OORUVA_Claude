@@ -17,8 +17,8 @@ import androidx.navigation.compose.rememberNavController
 import com.ooruva.app.data.mock.getMockVendors
 import com.ooruva.app.data.models.UserRole
 import com.ooruva.app.data.models.Vendor
-import com.ooruva.app.ui.components.FabNavigationGroup
-import com.ooruva.app.ui.components.customerDestinations
+import com.ooruva.app.ui.components.FloatingNavBar
+import com.ooruva.app.ui.components.customerNavDestinations
 import com.ooruva.app.ui.screens.BusinessDetailScreen
 import com.ooruva.app.ui.screens.CommunityScreen
 import com.ooruva.app.ui.screens.GroupFinderScreen
@@ -46,7 +46,7 @@ sealed class Screen(val route: String) {
     data object Profile : Screen("customer_profile")
 }
 
-private val chromeRoutes = customerDestinations.map { it.route }.toSet()
+private val chromeRoutes = customerNavDestinations.map { it.route }.toSet()
 
 @Composable
 fun OoruvaNavGraph(
@@ -82,6 +82,7 @@ fun OoruvaNavGraph(
 
             composable(Screen.Home.route) {
                 HomeScreen(
+                    onOpenGroupFinder = { navController.navigate(Screen.GroupFinder.route) },
                     onVendorClick = { vendor ->
                         selectedVendor = vendor
                         navController.navigate(Screen.BusinessDetail.createRoute(vendor.id))
@@ -120,8 +121,8 @@ fun OoruvaNavGraph(
         }
 
         if (showChrome) {
-            FabNavigationGroup(
-                destinations = customerDestinations,
+            FloatingNavBar(
+                destinations = customerNavDestinations,
                 currentRoute = currentRoute,
                 onNavigate = { route ->
                     navController.navigate(route) {

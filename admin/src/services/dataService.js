@@ -1,169 +1,314 @@
-import { supabase, isConfigured } from './supabaseClient'
+import { supabase } from './supabaseClient'
 
 /**
- * Every call returns { data, mock }. `mock: true` means the dashboard is showing
- * demo rows because Supabase is not configured yet — the UI says so out loud
- * rather than passing fiction off as production numbers.
+ * Admin data access, on the model migration 04 introduced and 07 completed:
+ * businesses / business_documents / verification_records / reward_transactions.
+ *
+ * The older vendor_profiles + fssai_records + rewards tables are no longer read
+ * here. They still exist so nothing breaks mid-migration, but the console is the
+ * surface where two competing models would do the most damage — an admin
+ * approving a row in one table while the customer app reads the other is a
+ * silent, invisible failure.
+ *
+ * The demo-data fallback is gone. It existed so the dashboard rendered before
+ * Supabase was configured, but the console now requires a real admin sign-in,
+ * so anything reaching these functions already has a live connection. Keeping
+ * plausible fake rows around a screen where people click "Approve" is a habit
+ * worth not having.
  */
 
-const demo = {
-  stats: { users: 4, vendors: 2, pending: 1, reviews: 1 },
-  vendors: [
-    {
-      id: 'demo-1', vendor_id: 'demo-1', business_name: 'Chai Wali',
-      business_category: 'Chai', address: 'Main Street, T. Nagar',
-      phone: '+919876543211', opening_hours: '06:00-22:00',
-      verification_status: 'verified', created_at: '2026-08-01T09:00:00Z',
-      fssai_records: [{ fssai_number: '1234-5678-9012', status: 'verified', certificate_url: null }],
-    },
-    {
-      id: 'demo-2', vendor_id: 'demo-2', business_name: 'Street Samosa',
-      business_category: 'Food', address: 'Market Road, T. Nagar',
-      phone: '+919876543212', opening_hours: '11:00-20:00',
-      verification_status: 'pending', created_at: '2026-08-17T14:30:00Z',
-      fssai_records: [{ fssai_number: null, status: 'needs_assistance', certificate_url: null }],
-    },
-  ],
-  users: [
-    { id: 'u1', phone: '+919876543210', role: 'customer', suspended: false, created_at: '2026-07-14T10:00:00Z' },
-    { id: 'u2', phone: '+919876543211', role: 'vendor', suspended: false, created_at: '2026-08-01T09:00:00Z' },
-    { id: 'u3', phone: '+919876543212', role: 'vendor', suspended: false, created_at: '2026-08-17T14:30:00Z' },
-    { id: 'u4', phone: '+919000000000', role: 'admin', suspended: false, created_at: '2026-07-01T08:00:00Z' },
-  ],
-  flagged: [],
-  rewards: [
-    { id: 'r1', customer_id: 'u1', points: 50, activity_type: 'check_in', status: 'credited', created_at: '2026-08-18T19:00:00Z' },
-    { id: 'r2', customer_id: 'u1', points: 10, activity_type: 'review', status: 'pending', created_at: '2026-08-18T20:00:00Z' },
-  ],
-  settings: [
-    { key: 'points_per_review', value: '10' },
-    { key: 'points_per_photo', value: '5' },
-    { key: 'points_per_post', value: '2' },
-    { key: 'points_per_checkin', value: '50' },
-    { key: 'points_to_rupee', value: '0.20' },
-    { key: 'support_whatsapp', value: '+910000000000' },
-  ],
+const must = ({ data, error }) => {
+  if (error) throw new Error(error.message)
+  return data ?? []
 }
 
-const wrap = (data) => ({ data, mock: !isConfigured })
+/** Who is acting. Recorded on every audited action. */
+async function actorId() {
+  const { data } = await supabase.auth.getUser()
+  return data?.user?.id ?? null
+}
+
+async function audit(action, entity, entityId, notes) {
+  await supabase.from('audit_log').insert({
+    actor_id: await actorId(),
+    action,
+    entity,
+    entity_id: entityId,
+    notes: notes ?? null,
+  })
+}
+
+// == Dashboard ===============================================================
 
 export async function fetchStats() {
-  if (!isConfigured) return wrap(demo.stats)
   const count = async (table, filter) => {
     let q = supabase.from(table).select('*', { count: 'exact', head: true })
     if (filter) q = q.eq(filter[0], filter[1])
-    const { count: c } = await q
+    const { count: c, error } = await q
+    if (error) throw new Error(error.message)
     return c ?? 0
   }
-  return wrap({
+
+  return {
     users: await count('users'),
-    vendors: await count('vendor_profiles'),
-    pending: await count('verification_queue', ['status', 'pending']),
+    businesses: await count('businesses'),
+    // 'submitted' is the queue. 'draft' is a vendor still typing and must not
+    // be counted as work waiting on an admin.
+    pending: await count('businesses', ['status', 'submitted']),
+    verified: await count('businesses', ['status', 'verified']),
     reviews: await count('reviews'),
-  })
+  }
 }
 
-export async function fetchVendors(status) {
-  if (!isConfigured) {
-    const rows = status ? demo.vendors.filter((v) => v.verification_status === status) : demo.vendors
-    return wrap(rows)
-  }
-  let q = supabase.from('vendor_profiles').select('*, fssai_records(*)').order('created_at', { ascending: false })
-  if (status) q = q.eq('verification_status', status)
-  const { data, error } = await q
-  if (error) throw error
-  return wrap(data ?? [])
+// == Businesses ==============================================================
+
+const BUSINESS_SELECT = `
+  *,
+  business_types ( id, name, slug, business_categories ( id, name, slug ) ),
+  business_documents ( id, document_type, document_number, storage_path, status, admin_notes )
+`
+
+export async function fetchBusinesses(status) {
+  let q = supabase
+    .from('businesses')
+    .select(BUSINESS_SELECT)
+    .order('submitted_at', { ascending: true, nullsFirst: false })
+
+  if (status) q = q.eq('status', status)
+  return must(await q)
 }
+
+/** The verification queue: oldest submission first, so nobody is left behind. */
+export async function fetchQueue() {
+  return must(
+    await supabase
+      .from('businesses')
+      .select(BUSINESS_SELECT)
+      .eq('status', 'submitted')
+      .order('submitted_at', { ascending: true })
+  )
+}
+
+/**
+ * Records a verification decision.
+ *
+ * Three writes, deliberately in this order: the outcome first, so a failure
+ * halfway cannot leave a business marked verified with no record of who did it;
+ * then the immutable verification_records row; then the audit entry.
+ *
+ * Postgres has no transaction across separate PostgREST calls. Doing this
+ * properly needs an RPC — noted in the report rather than papered over here.
+ */
+export async function decideVerification(businessId, status, notes) {
+  const patch = { status, verification_notes: notes ?? null }
+  if (status === 'verified') patch.verified_at = new Date().toISOString()
+
+  const { error } = await supabase.from('businesses').update(patch).eq('id', businessId)
+  if (error) throw new Error(error.message)
+
+  await supabase.from('verification_records').insert({
+    business_id: businessId,
+    // Not 'official_api'. OORUVA has no authorised government verification API,
+    // and recording one would be a false provenance claim on a compliance
+    // record. A person looked at a document; that is what this says.
+    method: 'manual_review',
+    outcome: status === 'verified' ? 'passed' : status === 'rejected' ? 'failed' : 'inconclusive',
+    checked_field: 'business_name+document_number',
+    evidence_note: notes ?? null,
+    performed_by: await actorId(),
+  })
+
+  await audit(`business_${status}`, 'businesses', businessId, notes)
+}
+
+/** Marks one submitted document as checked. */
+export async function decideDocument(documentId, status, notes) {
+  const { error } = await supabase
+    .from('business_documents')
+    .update({
+      status,
+      admin_notes: notes ?? null,
+      reviewed_by: await actorId(),
+      reviewed_at: new Date().toISOString(),
+    })
+    .eq('id', documentId)
+  if (error) throw new Error(error.message)
+
+  await audit(`document_${status}`, 'business_documents', documentId, notes)
+}
+
+export async function fetchCatalogue(businessId) {
+  return must(
+    await supabase
+      .from('products')
+      .select('*')
+      .eq('business_id', businessId)
+      .order('sort_order', { ascending: true })
+  )
+}
+
+// == Users ===================================================================
 
 export async function fetchUsers() {
-  if (!isConfigured) return wrap(demo.users)
-  const { data, error } = await supabase.from('users').select('*').order('created_at', { ascending: false })
-  if (error) throw error
-  return wrap(data ?? [])
-}
-
-export async function setVerification(vendorId, status, notes) {
-  if (!isConfigured) throw new Error('Connect Supabase to approve or reject vendors.')
-  const { error } = await supabase
-    .from('vendor_profiles')
-    .update({ verification_status: status, verification_notes: notes ?? null })
-    .eq('vendor_id', vendorId)
-  if (error) throw error
-
-  await supabase
-    .from('verification_queue')
-    .update({ status: status === 'verified' ? 'approved' : 'rejected', admin_notes: notes ?? null })
-    .eq('vendor_id', vendorId)
-
-  await supabase.from('audit_log').insert({
-    action: `vendor_${status}`, entity: 'vendor_profiles', entity_id: vendorId, notes: notes ?? null,
-  })
+  return must(
+    await supabase.from('users').select('*').order('created_at', { ascending: false })
+  )
 }
 
 export async function setUserSuspended(userId, suspended) {
-  if (!isConfigured) throw new Error('Connect Supabase to suspend users.')
   const { error } = await supabase.from('users').update({ suspended }).eq('id', userId)
-  if (error) throw error
+  if (error) throw new Error(error.message)
+
+  // Worth auditing in both directions. Suspension now revokes every
+  // owner-scoped grant immediately (migration 07), so it is a consequential act.
+  await audit(suspended ? 'user_suspended' : 'user_reinstated', 'users', userId, null)
 }
 
+// == Moderation ==============================================================
+
 export async function fetchFlagged() {
-  if (!isConfigured) return wrap(demo.flagged)
-  const [reviews, posts, comments] = await Promise.all([
+  const [reviews, posts, comments, messages] = await Promise.all([
     supabase.from('reviews').select('*').eq('flagged', true),
     supabase.from('posts').select('*').eq('flagged', true),
     supabase.from('post_comments').select('*').eq('flagged', true),
+    supabase.from('messages').select('*').eq('flagged', true),
   ])
-  return wrap([
+
+  return [
     ...(reviews.data ?? []).map((r) => ({ ...r, kind: 'review', body: r.text })),
     ...(posts.data ?? []).map((p) => ({ ...p, kind: 'post', body: p.caption })),
     ...(comments.data ?? []).map((c) => ({ ...c, kind: 'comment', body: c.text })),
-  ])
+    ...(messages.data ?? []).map((m) => ({ ...m, kind: 'message', body: m.body })),
+  ]
+}
+
+const MODERATION_TABLES = {
+  review: 'reviews',
+  post: 'posts',
+  comment: 'post_comments',
+  message: 'messages',
 }
 
 export async function resolveFlag(kind, id, action) {
-  if (!isConfigured) throw new Error('Connect Supabase to moderate content.')
-  const table = kind === 'review' ? 'reviews' : kind === 'post' ? 'posts' : 'post_comments'
+  const table = MODERATION_TABLES[kind]
+  if (!table) throw new Error(`Unknown content type: ${kind}`)
+
   if (action === 'delete') {
     const { error } = await supabase.from(table).delete().eq('id', id)
-    if (error) throw error
+    if (error) throw new Error(error.message)
   } else {
     const { error } = await supabase.from(table).update({ flagged: false }).eq('id', id)
-    if (error) throw error
+    if (error) throw new Error(error.message)
   }
+
+  await audit(`moderation_${action}`, table, id, null)
 }
 
-export async function fetchRewards() {
-  if (!isConfigured) return wrap(demo.rewards)
-  const { data, error } = await supabase.from('rewards').select('*').order('created_at', { ascending: false }).limit(200)
-  if (error) throw error
-  return wrap(data ?? [])
+// == Rewards =================================================================
+
+export async function fetchRewardLedger(limit = 200) {
+  return must(
+    await supabase
+      .from('reward_transactions')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(limit)
+  )
 }
+
+/** The configurable earning rates. Editing these needs no app release. */
+export async function fetchRewardRules() {
+  return must(await supabase.from('reward_rules').select('*').order('activity_type'))
+}
+
+export async function saveRewardRule(activityType, patch) {
+  const { error } = await supabase
+    .from('reward_rules')
+    .update({ ...patch, updated_by: await actorId(), updated_at: new Date().toISOString() })
+    .eq('activity_type', activityType)
+  if (error) throw new Error(error.message)
+
+  await audit('reward_rule_changed', 'reward_rules', null, `${activityType}: ${JSON.stringify(patch)}`)
+}
+
+// == Taxonomy ================================================================
+// Categories and types are data. This is the surface that makes them editable
+// without an app release, which is the whole point of the taxonomy tables.
+
+export async function fetchCategories() {
+  return must(
+    await supabase.from('business_categories').select('*').order('sort_order')
+  )
+}
+
+export async function fetchTypes() {
+  return must(
+    await supabase
+      .from('business_types')
+      .select('*, business_categories ( name, slug )')
+      .order('sort_order')
+  )
+}
+
+export async function saveCategory(id, patch) {
+  const { error } = await supabase.from('business_categories').update(patch).eq('id', id)
+  if (error) throw new Error(error.message)
+  await audit('category_changed', 'business_categories', id, JSON.stringify(patch))
+}
+
+// == Platform settings =======================================================
 
 export async function fetchSettings() {
-  if (!isConfigured) return wrap(demo.settings)
-  const { data, error } = await supabase.from('platform_settings').select('*').order('key')
-  if (error) throw error
-  return wrap(data ?? [])
+  return must(await supabase.from('platform_settings').select('*').order('key'))
 }
 
 export async function saveSetting(key, value) {
-  if (!isConfigured) throw new Error('Connect Supabase to change settings.')
-  const { error } = await supabase.from('platform_settings').upsert({ key, value, updated_at: new Date().toISOString() })
-  if (error) throw error
+  const { error } = await supabase
+    .from('platform_settings')
+    .upsert({ key, value, updated_at: new Date().toISOString() })
+  if (error) throw new Error(error.message)
+  await audit('setting_changed', 'platform_settings', null, `${key}=${value}`)
 }
 
-/** Signed URL for a private FSSAI certificate — expires in 5 minutes. */
-export async function certificateUrl(path) {
-  if (!isConfigured || !path) return null
-  const { data } = await supabase.storage.from('documents').createSignedUrl(path, 300)
+// == Audit ===================================================================
+
+export async function fetchAuditLog(limit = 200) {
+  return must(
+    await supabase
+      .from('audit_log')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(limit)
+  )
+}
+
+// == Storage =================================================================
+
+/**
+ * Short-lived signed URL for a private document.
+ *
+ * Five minutes, and generated per view rather than stored: these are people's
+ * licence certificates, and a long-lived URL in a browser history or a support
+ * ticket is a leak that outlives the session that created it.
+ */
+export async function documentUrl(path) {
+  if (!path) return null
+  const { data, error } = await supabase.storage.from('documents').createSignedUrl(path, 300)
+  if (error) return null
   return data?.signedUrl ?? null
 }
 
+// == Export ==================================================================
+
 export function exportCsv(rows, filename) {
   if (!rows?.length) return
-  const cols = Object.keys(rows[0])
+  const cols = Object.keys(rows[0]).filter((c) => typeof rows[0][c] !== 'object')
   const escape = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`
-  const csv = [cols.join(','), ...rows.map((r) => cols.map((c) => escape(r[c])).join(','))].join('\n')
+  const csv = [
+    cols.join(','),
+    ...rows.map((r) => cols.map((c) => escape(r[c])).join(',')),
+  ].join('\n')
+
   const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
   const a = document.createElement('a')
   a.href = URL.createObjectURL(blob)

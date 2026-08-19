@@ -11,12 +11,15 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
+import com.ooruva.app.data.auth.SessionStore
+import com.ooruva.app.data.remote.Supabase
 import com.ooruva.app.ui.navigation.OoruvaNavGraph
 import com.ooruva.app.ui.theme.OoruvaTheme
 
 class MainActivity : ComponentActivity() {
 
-    private val locationPermissionLauncher =
+    /** Invoked by the Map screen, at the moment location is actually needed. */
+    val locationPermissionLauncher =
         registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { granted ->
             val fine = granted[Manifest.permission.ACCESS_FINE_LOCATION] == true
             val coarse = granted[Manifest.permission.ACCESS_COARSE_LOCATION] == true
@@ -28,13 +31,20 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
-        // Nearby vendors and the map screen need location, so ask on startup.
-        locationPermissionLauncher.launch(
-            arrayOf(
-                Manifest.permission.ACCESS_FINE_LOCATION,
-                Manifest.permission.ACCESS_COARSE_LOCATION
-            )
-        )
+        // Hand the Supabase client a way to fetch the current access token.
+        // Read per request rather than captured once: the token lasts an hour,
+        // so a value snapshotted at startup would start being rejected mid-session
+        // with nothing in the logs to explain it. Returns null when signed out,
+        // which correctly leaves the client on the anon key -- public reads work,
+        // everything owner-scoped fails closed.
+        val sessionStore = SessionStore(this)
+        Supabase.tokenProvider = {
+            sessionStore.load()?.takeIf { it.isValid }?.accessToken
+        }
+
+        // Deliberately not requested here. Asking for location before the
+        // person has seen a single vendor is the classic way to get a hard
+        // denial; the Map screen asks at the point it can explain why.
 
         setContent {
             OoruvaTheme {

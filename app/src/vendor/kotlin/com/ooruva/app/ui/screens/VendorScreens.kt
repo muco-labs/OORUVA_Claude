@@ -41,6 +41,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -53,6 +54,8 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
+import com.ooruva.app.data.remote.DataResult
+import com.ooruva.app.data.repository.BusinessRepository
 import com.ooruva.app.ui.components.CountUpNumber
 import com.ooruva.app.ui.components.MucoLabsCredit
 import com.ooruva.app.ui.components.PremiumButton
@@ -76,6 +79,36 @@ fun VendorHomeScreen(
     onOpenAnalytics: () -> Unit = {},
     onOpenProfile: () -> Unit = {},
 ) {
+    var state by remember { mutableStateOf(VendorDashboardState()) }
+
+    LaunchedEffect(Unit) {
+        state = when (val mine = BusinessRepository.mine()) {
+            is DataResult.Success -> {
+                // A vendor may hold more than one business; the dashboard shows
+                // the first. Multi-business switching is a later step, and
+                // silently showing one of several with no indication would be
+                // worse than showing the one they most recently worked on.
+                val business = mine.data.firstOrNull()
+                val catalogue = business?.id
+                    ?.let { BusinessRepository.catalogue(it) }
+                    ?.let { if (it is DataResult.Success) it.data.size else 0 }
+                    ?: 0
+
+                state.copy(
+                    business = business,
+                    catalogueCount = catalogue,
+                    photoCount = if (business?.mainPhotoUrl.isNullOrBlank()) 0 else 1,
+                    loading = false,
+                )
+            }
+            is DataResult.Failure -> state.copy(
+                loading = false,
+                error = "Could not load your business. Check your connection.",
+            )
+            DataResult.Loading -> state
+        }
+    }
+
     OoruvaToolTheme {
         LazyColumn(
             modifier = Modifier
@@ -86,14 +119,49 @@ fun VendorHomeScreen(
             item {
                 VendorTopBar(
                     eyebrow = "Vendor dashboard",
-                    title = "Your business",
-                    verified = false,
+                    title = state.business?.name ?: "Your business",
+                    verified = state.isDiscoverable,
                     onProfile = onOpenProfile
                 )
             }
 
             item {
                 Column(Modifier.padding(horizontal = Spacing.lg)) {
+                    if (state.loading) {
+                        PendingCapability("Loading your business...")
+                    } else {
+                        state.error?.let { PendingCapability(it) }
+
+                        SectionHeader(eyebrow = "Listing", title = state.statusLine)
+                        Spacer(Modifier.height(Spacing.md))
+
+                        state.business?.let { business ->
+                            // The reviewer's note is the single most useful
+                            // thing on this screen when a listing is held up,
+                            // so it goes above everything else.
+                            business.verificationNotes?.takeIf { it.isNotBlank() }?.let { note ->
+                                PendingCapability(note)
+                                Spacer(Modifier.height(Spacing.md))
+                            }
+
+                            Text(
+                                "Profile " + business.profileCompleteness + "% complete",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+
+                        if (!state.hasBusiness && state.error == null) {
+                            PendingCapability(
+                                "You have not listed a business yet. Start from Business info."
+                            )
+                        }
+                    }
+
+                    Spacer(Modifier.height(Spacing.xl))
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                    Spacer(Modifier.height(Spacing.lg))
+
                     SectionHeader(eyebrow = "Today", title = "Trading")
                     Spacer(Modifier.height(Spacing.md))
 
@@ -114,14 +182,45 @@ fun VendorHomeScreen(
             }
 
             item {
-                VendorActionRow(Icons.Default.Edit, "Business info", "Hours, phone, description", onOpenBusinessInfo)
-                VendorActionRow(Icons.Default.PhotoLibrary, "Photos", "4 uploaded", onOpenPhotos)
-                VendorActionRow(Icons.Default.BarChart, "Analytics", "Seven-day trend", onOpenAnalytics)
+                VendorActionRow(
+                    Icons.Default.Edit,
+                    "Business info",
+                    "Hours, phone, description",
+                    onOpenBusinessInfo
+                )
+                VendorActionRow(
+                    Icons.Default.PhotoLibrary,
+                    "Photos",
+                    // Counted, not asserted. The old screen said "4 uploaded"
+                    // regardless of what had been uploaded.
+                    if (state.photoCount == 0) "None yet"
+                    else state.photoCount.toString() + " uploaded",
+                    onOpenPhotos
+                )
+                VendorActionRow(
+                    Icons.Default.BarChart,
+                    "Analytics",
+                    if (state.isDiscoverable) "Since your listing went live"
+                    else "Starts once you are verified",
+                    onOpenAnalytics
+                )
             }
 
             item {
                 Column(Modifier.padding(horizontal = Spacing.lg)) {
                     Spacer(Modifier.height(Spacing.lg))
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                    Spacer(Modifier.height(Spacing.lg))
+                    SectionHeader(eyebrow = "Catalogue", title = "What you sell")
+                    Spacer(Modifier.height(Spacing.md))
+                    Text(
+                        if (state.catalogueCount == 0) "Nothing listed yet."
+                        else state.catalogueCount.toString() + " items listed.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+
+                    Spacer(Modifier.height(Spacing.xl))
                     HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                     Spacer(Modifier.height(Spacing.lg))
                     SectionHeader(eyebrow = "Last seven days", title = "Footfall")

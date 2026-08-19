@@ -22,6 +22,24 @@ takes about 25 minutes and is free.
    - `supabase/05_taxonomy_seed.sql` — 10 categories, 40 business types,
      requirements engine
    - `supabase/06_rls_foundation.sql` — RLS for everything migration 04 added
+   - `supabase/07_identity_and_model.sql` — identity correction, nearby search
+     on `businesses`, reward rules, product kinds, resumable onboarding
+   - `supabase/08_admin_access.sql` — `grant_admin()` / `revoke_admin()`
+   - `supabase/09_storage_and_search.sql` — storage writes scoped to an owned
+     business, bounding-box nearby search, full-text search
+   - `supabase/10_reward_integrity.sql` — award idempotency, overdraft guard,
+     offer usage limits
+
+You can check all of this applies cleanly before touching a cloud project:
+
+```bash
+PGROOT=/path/to/postgres ./supabase/tests/run_tests.sh
+```
+
+That builds a throwaway database from the migrations and runs 95 assertions
+against it — mostly negative ones — a customer reaching vendor documents, a vendor
+minting reward points, an anonymous caller reading the ledger. It needs no
+credentials and touches nothing remote.
 5. **Settings → API** gives you three values:
    - `Project URL`
    - `anon public` key — safe in the app
@@ -89,7 +107,31 @@ and a self-inserted `users` row could claim `role = 'admin'`.
 ```bash
 supabase functions deploy auth-bootstrap
 supabase secrets set FIREBASE_PROJECT_ID=<your firebase project id>
+supabase secrets set SUPABASE_JWT_SECRET=<Settings > API > JWT Settings>
 ```
+
+`SUPABASE_JWT_SECRET` is what lets the function mint a session. Without it
+sign-in verifies the phone number and then hands back nothing Postgres will
+accept: every RLS policy keys off `auth.uid()`, so the app would authenticate
+and then be unable to read or write any of its own data. It is the single most
+important secret here — treat it like the service role key.
+
+### Deploy the rewards function
+
+```bash
+supabase functions deploy rewards
+```
+
+It reads the same `SUPABASE_JWT_SECRET`, so no new secret is needed. This is the
+only thing that writes `reward_transactions` — there is no client INSERT policy
+on that table, deliberately. Before paying for an action it looks the action up
+and checks it belongs to the caller, so a client asking to be paid for someone
+else's review, or for a review that does not exist, gets nothing.
+
+The function returns `access_token`, and the app sends that on every PostgREST
+and Storage call. The token's `sub` is the OORUVA `users.id`, not the Firebase
+UID: Supabase casts `sub` to `uuid` and a Firebase UID is not one. The Firebase
+UID lives in `users.firebase_uid` and is used only to find the account.
 
 The build reads them into `BuildConfig` and the manifest — see
 `app/build.gradle.kts`. If they are missing, the app still compiles and runs on
@@ -101,6 +143,37 @@ React app either — anything needing it belongs in a Supabase edge function.
 
 ---
 
+## 4a. Storage paths
+
+Both buckets use `<business_id>/<filename>`. Migration 09 refuses any write
+whose first path segment is not a business the caller owns, so the path is a
+permission check, not a filing convention — building one differently produces a
+refused upload rather than a misfiled object.
+
+`documents` stays private. It is read only through a signed URL that expires in
+minutes, never a public link: these are people's licence certificates.
+
+## 4b. Create an admin
+
+The console signs in with Supabase email + password rather than phone OTP — a
+browser has no SIM, and an admin account should be created deliberately rather
+than by anyone who can receive an SMS.
+
+1. **Authentication → Users → Add user.** Real address, strong password from a
+   password manager. Copy the generated user UID.
+2. In the SQL editor, with that UID:
+
+   ```sql
+   select grant_admin('<auth user uid>', '+91XXXXXXXXXX');
+   ```
+
+3. Check: `select id, role from users where role = 'admin';`
+
+There is no self-service path and there is not meant to be. `roles.admin` is
+not self-assignable, a trigger enforces it, and `auth-bootstrap` refuses to
+mint the role. `grant_admin()` needs direct database access, which no client
+key grants.
+
 ## 5. Verify before moving on
 
 - [ ] `select count(*) from vendor_profiles;` returns 2 (with seed data)
@@ -109,3 +182,11 @@ React app either — anything needing it belongs in a Supabase edge function.
 - [ ] `google-services.json` sits in `app/`
 - [ ] Maps key is restricted to your two package names
 - [ ] `local.properties` holds all three values and is **not** committed
+- [ ] `supabase secrets list` shows `FIREBASE_PROJECT_ID` and `SUPABASE_JWT_SECRET`
+- [ ] `select count(*) from business_categories;` returns 10
+- [ ] `select count(*) from business_types;` returns 40
+- [ ] At least one row in `users` with `role = 'admin'`
+- [ ] `./supabase/tests/run_tests.sh` reports `failed=0  sql_errors=0`
+- [ ] `select count(*) from reward_rules;` returns 5
+- [ ] `supabase functions list` shows `auth-bootstrap` and `rewards`
+- [ ] Storage shows buckets `photos` (public) and `documents` (private)

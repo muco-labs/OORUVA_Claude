@@ -10,3 +10,14 @@ captures/
 
 # Local test database (throwaway PostgreSQL cluster)
 /pgtest/
+
+# Firebase config. SETUP.md told people this was already ignored; it was not.
+# Not a private key, but it identifies the project and does not belong in a
+# public repository.
+app/google-services.json
+
+# Signing material. A committed keystore cannot be un-committed in any way
+# that matters -- it has to be rotated and every published build re-signed.
+*.jks
+*.keystore
+keystore.properties

@@ -7,7 +7,7 @@ export default function Moderation() {
 
   const load = async () => {
     try {
-      const { data } = await fetchFlagged()
+      const data = await fetchFlagged()
       setItems(data)
     } catch (e) {
       setError(e.message)

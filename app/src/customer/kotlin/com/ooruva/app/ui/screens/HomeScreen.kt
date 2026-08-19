@@ -25,6 +25,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.Search
@@ -43,7 +44,12 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.unit.dp
+import androidx.compose.runtime.LaunchedEffect
 import com.ooruva.app.data.mock.getMockVendors
+import com.ooruva.app.data.remote.DataResult
+import com.ooruva.app.data.remote.Supabase
+import com.ooruva.app.data.repository.BusinessRepository
+import com.ooruva.app.data.repository.TaxonomyRepository
 import com.ooruva.app.data.models.Vendor
 import com.ooruva.app.ui.components.EditorialHeader
 import com.ooruva.app.ui.components.GoldRating
@@ -55,23 +61,68 @@ import com.ooruva.app.ui.theme.Gold
 import com.ooruva.app.ui.theme.ForestLight
 import com.ooruva.app.ui.theme.pressScale
 
-private val categories = listOf("ALL", "CHAI", "FOOD", "JUICE", "SERVICE", "SALON", "SHOP")
+/**
+ * Categories are no longer declared here. They come from business_categories,
+ * so adding one is an admin insert rather than an app release. The only literal
+ * left is the "everything" pseudo-category, which is a UI affordance rather
+ * than a row in the taxonomy.
+ */
+private const val ALL_SLUG = "__all__"
 
 @Composable
 fun HomeScreen(
+    onOpenGroupFinder: () -> Unit = {},
     onVendorClick: (Vendor) -> Unit = {}
 ) {
     var searchQuery by remember { mutableStateOf("") }
-    var selectedCategory by remember { mutableStateOf("ALL") }
+    var selectedCategory by remember { mutableStateOf(ALL_SLUG) }
     val favourites = remember { mutableStateMapOf<String, Boolean>() }
-    val vendors = remember { getMockVendors() }
+    var state by remember { mutableStateOf(DiscoveryState()) }
 
-    val filtered = vendors.filter { vendor ->
+    LaunchedEffect(Unit) {
+        // Not configured: fall back to the seed set so the screen is usable for
+        // design work, but flag it so the UI can say these are samples. Showing
+        // invented shops as real places is the one thing discovery must not do.
+        if (!Supabase.isConfigured) {
+            state = state.copy(
+                businesses = getMockVendors(),
+                loading = false,
+                fromSampleData = true,
+            )
+            return@LaunchedEffect
+        }
+
+        val categories = when (val result = TaxonomyRepository.categories()) {
+            is DataResult.Success -> result.data
+            else -> emptyList()
+        }
+
+        state = when (val nearby = BusinessRepository.nearby(
+            lat = DEFAULT_ORIGIN_LAT,
+            lng = DEFAULT_ORIGIN_LNG,
+            radiusKm = 25.0,
+        )) {
+            is DataResult.Success -> state.copy(
+                categories = categories,
+                businesses = nearby.data.map { it.toVendor() },
+                loading = false,
+            )
+            is DataResult.Failure -> state.copy(
+                categories = categories,
+                loading = false,
+                error = "Could not load businesses near you. Check your connection.",
+            )
+            DataResult.Loading -> state.copy(categories = categories)
+        }
+    }
+
+    val filtered = state.businesses.filter { vendor ->
         val matchesQuery = searchQuery.isBlank() ||
             vendor.name.contains(searchQuery, ignoreCase = true) ||
             vendor.category.contains(searchQuery, ignoreCase = true) ||
             vendor.description.contains(searchQuery, ignoreCase = true)
-        val matchesCategory = selectedCategory == "ALL" || vendor.category == selectedCategory
+        val matchesCategory = selectedCategory == ALL_SLUG ||
+            vendor.category.equals(selectedCategory, ignoreCase = true)
         matchesQuery && matchesCategory
     }
 
@@ -98,28 +149,45 @@ fun HomeScreen(
                     .padding(horizontal = 24.dp, vertical = 20.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                categories.forEach { category ->
+                CategoryChip(
+                    label = "Everything",
+                    selected = selectedCategory == ALL_SLUG,
+                    onClick = { selectedCategory = ALL_SLUG }
+                )
+                state.categories.forEach { category ->
                     CategoryChip(
-                        label = if (category == "ALL") "Everything"
-                        else category.lowercase().replaceFirstChar { it.uppercase() },
-                        selected = selectedCategory == category,
-                        onClick = { selectedCategory = category }
+                        label = category.name,
+                        selected = selectedCategory == category.slug,
+                        onClick = { selectedCategory = category.slug }
                     )
                 }
             }
         }
 
+        if (state.fromSampleData) {
+            item { SampleDataBanner() }
+        }
+
+        state.error?.let { message ->
+            item { DiscoveryError(message) }
+        }
+
+        item { GroupFinderCard(onOpenGroupFinder) }
+
         item {
             SectionHeader(
                 eyebrow = "Around you",
-                title = if (filtered.size == 1) "One place nearby"
-                else "" + filtered.size + " places nearby",
+                title = when {
+                    state.loading -> "Looking nearby"
+                    filtered.size == 1 -> "One place nearby"
+                    else -> "" + filtered.size + " places nearby"
+                },
                 modifier = Modifier.padding(horizontal = 24.dp)
             )
             Spacer(Modifier.height(18.dp))
         }
 
-        if (filtered.isEmpty()) item { EmptyState(searchQuery) }
+        if (filtered.isEmpty() && !state.loading) item { EmptyState(searchQuery) }
 
         items(filtered, key = { it.id }) { vendor ->
             VendorCard(
@@ -173,6 +241,48 @@ private fun SearchField(query: String, onQueryChange: (String) -> Unit) {
             )
         }
     }
+}
+
+/**
+ * Group Finder used to sit on the navigation bar. It is a task, not a place,
+ * so it belongs in the flow of Home where the question actually occurs.
+ */
+@Composable
+private fun GroupFinderCard(onClick: () -> Unit) {
+    val interaction = remember { MutableInteractionSource() }
+    Row(
+        modifier = Modifier
+            .padding(horizontal = 24.dp)
+            .pressScale(interaction)
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .background(MaterialTheme.colorScheme.primaryContainer)
+            .clickable(interactionSource = interaction, indication = null, onClick = onClick)
+            .padding(horizontal = 18.dp, vertical = 16.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column(Modifier.weight(1f)) {
+            Text(
+                text = "EATING TOGETHER?",
+                style = EyebrowStyle,
+                color = MaterialTheme.colorScheme.onPrimaryContainer
+            )
+            Spacer(Modifier.height(6.dp))
+            Text(
+                text = "Split a budget across the group",
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onPrimaryContainer
+            )
+        }
+        Spacer(Modifier.width(12.dp))
+        Icon(
+            Icons.AutoMirrored.Filled.ArrowForward,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.onPrimaryContainer,
+            modifier = Modifier.size(18.dp)
+        )
+    }
+    Spacer(Modifier.height(24.dp))
 }
 
 @Composable
@@ -319,6 +429,47 @@ private fun EmptyState(query: String) {
             else "No vendor matches \"" + query + "\".",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+    }
+}
+
+/**
+ * Shown when the app is running without a backend. Deliberately unmissable:
+ * a customer must never mistake seed data for shops they can actually visit.
+ */
+@Composable
+private fun SampleDataBanner() {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 24.dp, vertical = 8.dp)
+            .clip(RoundedCornerShape(10.dp))
+            .background(Gold.copy(alpha = 0.12f))
+            .padding(horizontal = 16.dp, vertical = 12.dp)
+    ) {
+        Text(
+            text = "Sample listings. These are not real businesses \u2014 " +
+                "OORUVA is not connected to its backend on this build.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurface
+        )
+    }
+}
+
+@Composable
+private fun DiscoveryError(message: String) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 24.dp, vertical = 8.dp)
+            .clip(RoundedCornerShape(10.dp))
+            .background(MaterialTheme.colorScheme.errorContainer)
+            .padding(horizontal = 16.dp, vertical = 12.dp)
+    ) {
+        Text(
+            text = message,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onErrorContainer
         )
     }
 }
